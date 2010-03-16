@@ -1,0 +1,140 @@
+%META:TOPICINFO{author="micha" comment="save topic" date="1268764919" format="1.1" reprev="1.5" version="1.5"}%
+---+!! %TOPIC%
+%SHORTDESCRIPTION%
+
+%TOC%
+
+!SoapPlugin is an way to integrate webservices using the SOAP transport protocol. It has got support for service definitions using WSDL as far as supported by [[CPAN:SOAP:Lite][SoapLite]], the underlying perl library of SOAP operatiosn.
+For those cases of more complicated WSDL descriptions not covered by !SoapLite, endpoints can be be specified manually.
+
+This plugin supports accessing SOAP webservices using basic authentication, that is allows accessing endpoints secured by HTTP credentials. 
+
+The xml response of a service endpoint can be parsed and formatted using basic xpath expressions.
+
+---++ Syntax
+
+---+++ SOAP
+
+| *Parameter* | *Description* |
+| "..." | client to use to access a specific webservice; \
+  clients are defined in =configure= in ={SoapPlugin}{Clients}=; see the "Configuring Clients" below |
+| id="..." | stores the retrieved result under the given ID to be reused in =SOAPFORMAT= |
+| method="..." | remote procedure to be executed on the server side; this is an identifier \
+  specific to the service; if not defined =defaultMethod= is used as specified in the service definition |
+| format="..." %BR% \
+  header="..." %BR% \
+  footer="..." %BR% \
+  separator="..." | these format strings are used to format non-scalar results |
+| hidenull="on/off" | if switched on, the empty response or node won't be displayed, that is even =head= and =footer= content is omitted |
+| raw="on/off" | if switched on, the xml response is returned as is, that is no formatting is applied |
+| verbatim="on/off" | this behaves like =raw="on"= basically but also pretty-prints the output to ease reading the xml and then puts it into a &lt;verbatim> environment to format it as html |
+| valueof="..." | xpath expression to filter the output |
+| depth="int" | the depth to which an XML response object should be traversed while rendering it using =format=, =header=, =footer= and =separator= |
+
+If the node selected by the =valueof= xpath expression is not a scalar value, e.g. addresses a node in the xml response which contains further child nodes, then the result is rendered recursively using =format=, =header=, =footer= and =separator= while traversing the xml output. When visiting a node, its key and its value are inserted using the =$key= and =$value= variables part of the =format= string.
+
+Standard escapes may be used in all format strings, that is =$percnt=, =$nop=, =$n= and =$dollar=.
+
+Any additional parameter like for example =EMPLOYEEID= in =%<nop>SOAP{"client-id" method="getVacationOfEmployee" EMPLOYEEID="1606"}%= will be passed over to the server and are not interpreted by the !SoapPlugin itself. This also
+means that any required parameter to a webservice method must not overlap with those documented above as part of 
+the =%SOAP= command.
+
+---+++ SOAPFORMAT
+
+| *Parameter* | *Description* |
+| "..." (or id="...") | this refers to a previous =%SOAP= call that was stored at the given ID using the =id= parameter to =%SOAP= |
+| format="..." %BR% \
+  header="..." %BR% \
+  footer="..." %BR% \
+  separator="..." | these format strings are used to format non-scalar results |
+| hidenull="on/off" | if switched on, the empty response or node won't be displayed, that is even =head= and =footer= content is omitted |
+| raw="on/off" | if switched on, the xml response is returned as is, that is no formatting is applied |
+| verbatim="on/off" | this behaves like =raw="on"= basically but also pretty-prints the output to ease reading the xml and then puts it into a &lt;verbatim> environment to format it as html |
+| valueof="..." | xpath expression to filter the output |
+| depth="int" | the depth to which an XML response object should be traversed while rendering it using =format=, =header=, =footer= and =separator= |
+
+So the parameters to =%SOAPFORMAT= are mostly the same as those for =%SOAP= except =method=. This is not needed as SOAPFORMAT formats the response already received by accessing the server/method of the previous =%SOAP= call.
+
+---++ Configuring Clients
+
+Each client specifies an service that Foswiki might talk to using SOAP. These have to be defined upfront using
+[[%SCRIPTURLPATH{"configure"}%][configure]]. A service is then connected 
+using =%<nop>SOAP{"service-id" ...}%=.
+
+Example:
+
+<verbatim>
+$Foswiki::cfg{SoapPlugin}{Clients} = [
+  {
+    id => 'portal',
+    uri => 'urn:company.com:xi:ess_r2',
+    proxy => 'http://company.com:50000/XISOAPAdapter/MessageServlet?channel=:Portal:Portal_Webservice',
+    xmlns => 'urn:sap-com:document:sap:rfc:functions',
+    user => 'soap_user',
+    password => 'soap_password',
+    defautMethod => 'EMPLOYEE_FUNCTION'
+  },
+  {
+    id => 'mockup',
+    uri => 'urn:company.com:xi:ess_r2',
+    proxy => 'http://127.0.0.1:8088/mockPortalBinding',
+    xmlns => 'urn:sap-com:document:sap:rfc:functions',
+  }
+];
+</verbatim>
+
+This defines two clients that are stored under the IDs =portal= and =mockup=. These are then used by a 
+=%<nop>SOAP{"portal" method="..."}%= or =%<nop>SOAP{"mockup" method="..."}%= statement respectively.
+
+The following list of parameters might be used to configure a service:
+
+| *Parameter* | *Description* |
+| id => "..." | symbolic name to make use of the connection | 
+| uri => "..." %BR% \
+  proxy => "..." %BR% \
+  xmlns => "..." | resource specification of the given endpoint definition; please look up the SOAP documentation of that service for more details |
+| wsdl => "..." | url of the WSDL definition; either use =uri= + =proxy= or =wsdl= to specifiy a connection |
+| defaultMethod => "..." | default method to be used by this client; can be overriden using the =method= parameter of a =%SOAP= call |
+| user => "..." %BR% \
+  password =>" | user name and password in case the webservice is access protected using HTTP credentials |
+| namespace => [ %BR% \
+  &nbsp;"id" => "urn", %BR% \
+  &nbsp;"id" => "urn", %BR% \
+  &nbsp;... %BR% \
+  ] | list of namespaces to be defined as part of the protocol; this is a set of extra namespaces that might be used when talking to the SOAP server; most of the time specifying =xmlns= is enough to defined the default namespace with which methods are called |
+
+---++ Foswiki specific SOAP headers
+
+Every message created by !SoapPlugin adds a set of foswiki-specific headers which are defined in the
+=foswiki:http//schema.foswiki.org/soap= namespace. These are
+
+| *Header* | *Description* |
+| =foswiki:wikiName= %BR% =foswiki:loginName= | WikiName of the user currently logged in triggering the SOAP call |
+| =foswiki:web= %BR% =foswiki.topic= | web and topic from where the SOAP call was issued | 
+| =foswiki:isAdmin= | a boolean flag indicating whether the current user is a wiki admin |
+
+---++ Installation Instructions
+
+%$INSTALL_INSTRUCTIONS%
+
+---++ Known Problems
+
+   1 On some systems CPAN:SOAP::Lite throws a tainted error. !SoapPlugin comes with a patch to SOAP::Transport::HTTP
+     to mitigate the problem.
+   1 WSDL support of Soap::Lite is rather limitted.
+
+---++ Plugin Info
+<!--
+   * Set SHORTDESCRIPTION = %$SHORTDESCRIPTION%
+-->
+|  Author(s): | Foswiki:Main/MichaelDaum |
+|  Copyright: | &copy; 2010 Michael Daum http://michaeldaumconsulting.com |
+|  License: | [[http://www.gnu.org/licenses/gpl.html][GPL (Gnu General Public License)]] |
+|  Release: | %$RELEASE% |
+|  Version: | %$VERSION% |
+|  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  Dependencies: | %$DEPENDENCIES% |
+|  Home page: | Foswiki:Extensions/%TOPIC% |
+|  Support: | Foswiki:Support/%TOPIC% |
+
+<!-- Do _not_ attempt to edit this topic; it is auto-generated. -->

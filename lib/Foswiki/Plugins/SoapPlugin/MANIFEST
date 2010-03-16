@@ -1,0 +1,6 @@
+data/System/SoapPlugin.txt 0644
+lib/Foswiki/Plugins/SoapPlugin/Client.pm 0644
+lib/Foswiki/Plugins/SoapPlugin/Config.spec 0644
+lib/Foswiki/Plugins/SoapPlugin/Core.pm 0644
+lib/Foswiki/Plugins/SoapPlugin.pm 0644
+soap-transport-http.patch 0644

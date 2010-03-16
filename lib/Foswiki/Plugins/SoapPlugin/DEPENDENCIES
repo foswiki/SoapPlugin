@@ -1,0 +1,2 @@
+SOAP::Lite,>=0.71,CPAN,Required. install from CPAN
+libxml2,>=2.7.5,,Required.

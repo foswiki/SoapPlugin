@@ -1,0 +1,16 @@
+--- /usr/share/perl5/SOAP/Transport/HTTP.pm	2008-12-25 12:21:36.000000000 +0100
++++ /tmp/HTTP.pm	2010-01-18 16:17:24.000000000 +0100
+@@ -291,9 +291,14 @@
+               ? die "Can't understand returned Content-Encoding (@{[$self->http_response->content_encoding]})\n"
+               : $self->http_response->content;
+ 
+-    return $self->http_response->content_type =~ m!^multipart/!i
++    $content = $self->http_response->content_type =~ m!^multipart/!i
+         ? join("\n", $self->http_response->headers_as_string, $content)
+         : $content;
++
++    # untaint
++    $content =~ /^(.*)$/;
++    $content = $1;
++    return $content;
+ }
