@@ -1,4 +1,4 @@
-%META:TOPICINFO{author="micha" date="1269028908" format="1.1" version="1.6"}%
+%META:TOPICINFO{author="ProjectContributor" date="1269028908" format="1.1" version="1.6"}%
 ---+!! %TOPIC%
 %SHORTDESCRIPTION%
 
@@ -146,7 +146,7 @@ Every message created by !SoapPlugin adds a set of foswiki-specific headers whic
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
-|  19 Mar 2010: | rewrite of serializer; implemented =$valueof()= etc |
+|  19 Mar 2010: | rewrite of serializer; implemented =$valueof()= etc; fixed UTF8 handling |
 |  16 Mar 2010: | initial release |
 |  Dependencies: | %$DEPENDENCIES% |
 |  Home page: | Foswiki:Extensions/%TOPIC% |

@@ -18,6 +18,8 @@ package Foswiki::Plugins::SoapPlugin::Core;
 use strict;
 use Foswiki::Plugins ();
 use Foswiki::Plugins::SoapPlugin::Client();
+use Unicode::MapUTF8 ();
+
 our $baseWeb;
 our $baseTopic;
 our %clients;
@@ -200,14 +202,14 @@ sub stringify {
     my $line = $params->{format};
     $line = '$value' unless defined $line;
 
-    $line =~ s/\$(key|name)/($dataItem->name()||'')/ge;
-    $line =~ s/\$type/($dataItem->type()||'')/ge;
-    $line =~ s/\$uri/($dataItem->uri()||'')/ge;
-    $line =~ s/\$prefix/($dataItem->prefix()||'')/ge;
-    $line =~ s/\$attr\((.*?)\)/($dataItem->attr($1)||'')/ge;
+    $line =~ s/\$(key|name)/fromUtf8($dataItem->name()||'')/ge;
+    $line =~ s/\$type/fromUtf8($dataItem->type()||'')/ge;
+    $line =~ s/\$uri/fromUtf8($dataItem->uri()||'')/ge;
+    $line =~ s/\$prefix/fromUtf8($dataItem->prefix()||'')/ge;
+    $line =~ s/\$attr\((.*?)\)/fromUtf8($dataItem->attr($1)||'')/ge;
     $line =~ s/\$index/$currentIndex/g;
     $line =~ s/\$depth/$depth/g;
-    $line =~ s/\$valueof\((.*?)\)/($som->valueof($1||'')||'')/ge;
+    $line =~ s/\$valueof\((.*?)\)/fromUtf8($som->valueof($1||'')||'')/ge;
 
     if ($line =~ /\$value\b/) {
       my $value = $dataItem->value() ||'';
@@ -238,7 +240,7 @@ sub stringify {
       } else {
 	push @values, ref($value);
       }
-      $value = join('', @values);
+      $value = fromUtf8(join('', @values));
       $line =~ s/\$value\b/$value/g;
     }
 
@@ -249,6 +251,27 @@ sub stringify {
 
   return $params->{header}.join($params->{separator}, @lines).$params->{footer};
 }
+
+###############################################################################
+sub toUtf8 {
+  my $text = shift;
+
+  $text = Unicode::MapUTF8::to_utf8(-string=>$text, -charset=>$Foswiki::cfg{Site}{CharSet})
+    if $Foswiki::cfg{Site}{CharSet} !~ /^utf-?8$/i;
+
+  return $text;
+}
+
+###############################################################################
+sub fromUtf8 {
+  my $text = shift;
+
+  $text = Unicode::MapUTF8::from_utf8(-string=>$text, -charset=>$Foswiki::cfg{Site}{CharSet})
+    if $Foswiki::cfg{Site}{CharSet} !~ /^utf-?8$/i;
+
+  return $text;
+}
+
 
 1;
 
