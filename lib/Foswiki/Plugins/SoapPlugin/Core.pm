@@ -24,6 +24,7 @@ our %clients;
 our %knownSoms;
 
 use constant DEBUG => 0; # toggle me
+#use Data::Dumper ();
 
 ###############################################################################
 sub writeDebug {
@@ -143,10 +144,7 @@ sub formatResult {
     return '<verbatim>'.$content.'</verbatim>';
   }
 
-  $som->match('//Envelope/Body');
-  my @data = ($params->{valueof})?$som->valueof($params->{valueof}):$som->valueof();
-  my $data = (scalar(@data) > 1)?\@data:$data[0];
-  my $result = stringify($data, $params);
+  my $result = stringify($som, $params);
 
   $result =~ s/\$perce?nt/\%/go;
   $result =~ s/\$nop\b//go;
@@ -177,39 +175,78 @@ sub handleSOAPFORMAT {
 
 ###############################################################################
 sub stringify {
-  my ($data, $params, $depth) = @_;
+  my ($som, $params, $data, $depth) = @_;
 
   $depth ||= 1;
-  return '' if $params->{depth} && $params->{depth} < $depth;
+  my $currentPath = $params->{valueof}||'';
+  unless ($data) {
+    my @data;
+    @data = $som->dataof($currentPath);
+    $som->match($currentPath);
+    $data = \@data;
+  };
+
+  #writeDebug("called stringify(depth=$depth)");
+
+  my $maxDepth = $params->{depth} || 10;
+  return '' if $maxDepth < $depth;
   return '' unless defined $data;
 
   my @lines = ();
-  if (ref(\$data) eq "SCALAR") {
-    #writeDebug("SCALAR");
-    return $data;
-  } elsif (ref($data) eq "ARRAY") {
-    #writeDebug("ARRAY");
-    my $index = 1;
-    foreach my $value (@$data) {
-      my $line = $params->{format};
-      $line = '$value' unless defined $line;
-      $line =~ s/\$key/$index/g;
-      $line =~ s/\$value/stringify($value, $params, $depth +1)/ge;
-      $index++;
-      push @lines, $line;
-    }
-  } elsif (ref($data) eq "HASH") {
-    #writeDebug("HASH");
-    foreach my $key (keys %$data) {
-      my $line = $params->{format};
-      $line = '$key=$value' unless defined $line;
-      $line =~ s/\$key/$key/ge;
-      $line =~ s/\$value/stringify($data->{$key}, $params, $depth +1)/ge;
-      push @lines, $line;
-    }
-  }
 
+
+  my $currentIndex = $params->{_index} || 1;
+  foreach my $dataItem (@$data) {
+    my $line = $params->{format};
+    $line = '$value' unless defined $line;
+
+    $line =~ s/\$(key|name)/($dataItem->name()||'')/ge;
+    $line =~ s/\$type/($dataItem->type()||'')/ge;
+    $line =~ s/\$uri/($dataItem->uri()||'')/ge;
+    $line =~ s/\$prefix/($dataItem->prefix()||'')/ge;
+    $line =~ s/\$attr\((.*?)\)/($dataItem->attr($1)||'')/ge;
+    $line =~ s/\$index/$currentIndex/g;
+    $line =~ s/\$depth/$depth/g;
+    $line =~ s/\$valueof\((.*?)\)/($som->valueof($1||'')||'')/ge;
+
+    if ($line =~ /\$value\b/) {
+      my $value = $dataItem->value() ||'';
+
+      #print STDERR "value=$value ref=".ref($value)."\n";
+
+      my @values = ();
+      if (!ref($value) || ref($value) eq "SCALAR") {
+	push @values, $value;
+      } elsif (ref($value) eq "ARRAY") {
+	my $index = 1;
+	foreach my $item (@$value) {
+	  if (ref($item) eq "SCALAR") {
+	    push @values, $item;
+	  } else {
+	    $params->{_index} = $index;
+	    push @values, stringify($som, $params, [SOAP::Data->new(name=>$index, value=>$item)], $depth+1);
+	    $index++;
+	  }
+	}
+      } elsif (ref($value) eq "HASH") {
+	my $index = 1;
+	foreach my $key (keys %$value) {
+	  $params->{_index} = $index;
+	  push @values, stringify($som, $params, [SOAP::Data->new(name=>$key, value=>$value->{$key})], $depth+1);
+	  $index++;
+	}
+      } else {
+	push @values, ref($value);
+      }
+      $value = join('', @values);
+      $line =~ s/\$value\b/$value/g;
+    }
+
+    $currentIndex++;
+    push @lines, $line;
+  }
   return '' if $params->{hidenull} && !@lines;
+
   return $params->{header}.join($params->{separator}, @lines).$params->{footer};
 }
 

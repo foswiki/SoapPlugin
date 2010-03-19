@@ -1,4 +1,4 @@
-%META:TOPICINFO{author="micha" comment="save topic" date="1268764919" format="1.1" reprev="1.5" version="1.5"}%
+%META:TOPICINFO{author="micha" date="1269028908" format="1.1" version="1.6"}%
 ---+!! %TOPIC%
 %SHORTDESCRIPTION%
 
@@ -31,9 +31,6 @@ The xml response of a service endpoint can be parsed and formatted using basic x
 | valueof="..." | xpath expression to filter the output |
 | depth="int" | the depth to which an XML response object should be traversed while rendering it using =format=, =header=, =footer= and =separator= |
 
-If the node selected by the =valueof= xpath expression is not a scalar value, e.g. addresses a node in the xml response which contains further child nodes, then the result is rendered recursively using =format=, =header=, =footer= and =separator= while traversing the xml output. When visiting a node, its key and its value are inserted using the =$key= and =$value= variables part of the =format= string.
-
-Standard escapes may be used in all format strings, that is =$percnt=, =$nop=, =$n= and =$dollar=.
 
 Any additional parameter like for example =EMPLOYEEID= in =%<nop>SOAP{"client-id" method="getVacationOfEmployee" EMPLOYEEID="1606"}%= will be passed over to the server and are not interpreted by the !SoapPlugin itself. This also
 means that any required parameter to a webservice method must not overlap with those documented above as part of 
@@ -54,6 +51,22 @@ the =%SOAP= command.
 | depth="int" | the depth to which an XML response object should be traversed while rendering it using =format=, =header=, =footer= and =separator= |
 
 So the parameters to =%SOAPFORMAT= are mostly the same as those for =%SOAP= except =method=. This is not needed as SOAPFORMAT formats the response already received by accessing the server/method of the previous =%SOAP= call.
+
+If the node selected by the =valueof= xpath expression is not a scalar value, e.g. addresses a node in the xml response which contains further child nodes, then the result is rendered recursively using =format=, =header=, =footer= and =separator= while traversing the xml output. 
+
+When visiting a node, the following variables can be used to access its properties:
+
+   * =$name=: (or =$key=): the name of the node
+   * =$value=: the value of the node; this expands recursively when the value is not a final child node
+   * =$type=: the type of the node according to the WSDL definition
+   * =$uri=: the URI that will be used as the namespace
+   * =$prefix=: the prefix used when associating the node with a specific namespace
+   * =$attr(...)=: the value of the named attribute
+   * =$index=: the index of this node in a list of sibling nodes
+   * =$depth=: the distance from the root node of the contained xml document
+   * =$valueof(...)=: the value of the node as specified by the enclosed xpath expression; note: in contrast to the =valueof= parameter of the =%SOAP/SOAPFORMAT= tag itself, this only returns the first matching value
+
+Standard escapes may be used in all format strings, that is =$percnt=, =$nop=, =$n= and =$dollar=.
 
 ---++ Configuring Clients
 
@@ -133,6 +146,8 @@ Every message created by !SoapPlugin adds a set of foswiki-specific headers whic
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  19 Mar 2010: | rewrite of serializer; implemented =$valueof()= etc |
+|  16 Mar 2010: | initial release |
 |  Dependencies: | %$DEPENDENCIES% |
 |  Home page: | Foswiki:Extensions/%TOPIC% |
 |  Support: | Foswiki:Support/%TOPIC% |

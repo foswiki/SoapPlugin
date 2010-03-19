@@ -16,7 +16,7 @@ use strict;
 use Foswiki::Func ();
 
 our $VERSION = '$Rev$';
-our $RELEASE = '0.3';
+our $RELEASE = '0.4';
 our $SHORTDESCRIPTION = 'SOAP for Foswiki';
 our $NO_PREFS_IN_TOPIC = 1;
 our $baseWeb;
