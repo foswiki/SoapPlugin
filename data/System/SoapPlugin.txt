@@ -4,12 +4,17 @@
 
 %TOC%
 
-!SoapPlugin is an way to integrate webservices using the SOAP transport protocol. It has got support for service definitions using WSDL as far as supported by [[CPAN:SOAP:Lite][SoapLite]], the underlying perl library of SOAP operatiosn.
-For those cases of more complicated WSDL descriptions not covered by !SoapLite, endpoints can be be specified manually.
+!SoapPlugin is an way to integrate webservices using the SOAP transport
+protocol. It has got support for service definitions using WSDL as far as
+supported by [[CPAN:SOAP:Lite][SoapLite]], the underlying perl library of SOAP
+operatiosn.  For those cases of more complicated WSDL descriptions not covered
+by !SoapLite, endpoints can be be specified manually.
 
-This plugin supports accessing SOAP webservices using basic authentication, that is allows accessing endpoints secured by HTTP credentials. 
+This plugin supports accessing SOAP webservices using basic authentication,
+that is allows accessing endpoints secured by HTTP credentials. 
 
-The xml response of a service endpoint can be parsed and formatted using basic xpath expressions.
+The xml response of a service endpoint can be parsed and formatted using basic
+xpath expressions.
 
 ---++ Syntax
 
@@ -32,9 +37,32 @@ The xml response of a service endpoint can be parsed and formatted using basic x
 | depth="int" | the depth to which an XML response object should be traversed while rendering it using =format=, =header=, =footer= and =separator= |
 
 
-Any additional parameter like for example =EMPLOYEEID= in =%<nop>SOAP{"client-id" method="getVacationOfEmployee" EMPLOYEEID="1606"}%= will be passed over to the server and are not interpreted by the !SoapPlugin itself. This also
-means that any required parameter to a webservice method must not overlap with those documented above as part of 
-the =%SOAP= command.
+Any additional parameter like for example =EMPLOYEEID= in
+=%<nop>SOAP{"client-id" method="getVacationOfEmployee" EMPLOYEEID="1606"}%=
+will be passed over to the server and are not interpreted by the !SoapPlugin
+itself. This also means that any required parameter to a webservice method must
+not overlap with those documented above as part of the =%SOAP= command.
+
+A parameter may contain nested argument structures which are then translated to nested xml structures. For example
+
+<verbatim class="tml">
+%SOAP{
+   ...
+   STORNO="
+     STARTDATE=\"20101101\"
+     ENDDATE=\"20101107\"
+   "
+}%
+</verbatim>
+
+Will be translated to a call using
+
+<verbatim class="html">
+<STORNO>
+  <STARTDATE>20101101</STARTDATE>
+  <ENDDATE>20101107</ENDDATE>
+</STORNO>
+</verbatim>
 
 ---+++ SOAPFORMAT
 
@@ -50,11 +78,17 @@ the =%SOAP= command.
 | valueof="..." | xpath expression to filter the output |
 | depth="int" | the depth to which an XML response object should be traversed while rendering it using =format=, =header=, =footer= and =separator= |
 
-So the parameters to =%SOAPFORMAT= are mostly the same as those for =%SOAP= except =method=. This is not needed as SOAPFORMAT formats the response already received by accessing the server/method of the previous =%SOAP= call.
+So the parameters to =%SOAPFORMAT= are mostly the same as those for =%SOAP=
+except =method=. This is not needed as SOAPFORMAT formats the response already
+received by accessing the server/method of the previous =%SOAP= call.
 
-If the node selected by the =valueof= xpath expression is not a scalar value, e.g. addresses a node in the xml response which contains further child nodes, then the result is rendered recursively using =format=, =header=, =footer= and =separator= while traversing the xml output. 
+If the node selected by the =valueof= xpath expression is not a scalar value,
+e.g. addresses a node in the xml response which contains further child nodes,
+then the result is rendered recursively using =format=, =header=, =footer= and
+=separator= while traversing the xml output. 
 
-When visiting a node, the following variables can be used to access its properties:
+When visiting a node, the following variables can be used to access its
+properties:
 
    * =$name=: (or =$key=): the name of the node
    * =$value=: the value of the node; this expands recursively when the value is not a final child node
@@ -146,6 +180,7 @@ Every message created by !SoapPlugin adds a set of foswiki-specific headers whic
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  10 May 2010: | added support for nested argument structures |
 |  19 Mar 2010: | rewrite of serializer; implemented =$valueof()= etc; fixed UTF8 handling |
 |  16 Mar 2010: | initial release |
 |  Dependencies: | %$DEPENDENCIES% |

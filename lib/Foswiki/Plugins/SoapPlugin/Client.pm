@@ -17,9 +17,9 @@ package Foswiki::Plugins::SoapPlugin::Client;
 
 use strict;
 use Foswiki::Func ();    # The plugins API
+use Foswiki::Attrs ();
 use Error qw( :try );
-use SOAP::Lite;# +trace => ['debug'];
- 
+use SOAP::Lite;# +trace => ['debug']; 
 use constant DEBUG => 0; # toggle me
 
 use vars qw($currentClient);
@@ -116,6 +116,29 @@ sub onFaultHandler {
 }
 
 ###############################################################################
+sub parseParams {
+  my ($this, $params, $result) = @_;
+
+  $result ||= [];
+
+  foreach my $key (keys %$params) {
+    next if $key =~ /^(_.*|format|header|footer|separator|hidenull|method|verbatim|raw|valueof)$/;
+    my $val = $params->{$key};
+    my $attrs = new Foswiki::Attrs($val);
+    my $data;
+    if (scalar(keys %$attrs)>2) {
+      my @val = $this->parseParams($attrs);
+      $data = SOAP::Data->name($key => \SOAP::Data->value(@val));
+    } else {
+      $data = SOAP::Data->name($key => $val);
+    }
+    push @$result, $data;
+  }
+
+  return @$result;
+}
+
+###############################################################################
 sub call {
   my ($this, $method, $params) = @_;
 
@@ -123,15 +146,7 @@ sub call {
   writeDebug("called call($method)");
   $currentClient = $this;
 
-  my @params = ();
-  foreach my $key (keys %$params) {
-    next if $key =~ /^(_.*|format|header|footer|separator|hidenull|method|verbatim|raw|valueof)$/;
-    my $data = SOAP::Data->new(
-      name=>$key,
-      value=>$params->{$key}
-    );
-    push @params, $data;
-  }
+  my @params = $this->parseParams($params);
 
   # foswiki header
   my $session = $Foswiki::Plugins::SESSION;
