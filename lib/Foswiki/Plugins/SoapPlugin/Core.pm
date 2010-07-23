@@ -130,6 +130,7 @@ sub normalizeParams {
   $params->{raw}  = ($params->{raw} eq 'on')?1:0;
   $params->{verbatim} ||= 'off';
   $params->{verbatim}  = ($params->{verbatim} eq 'on')?1:0;
+  $params->{warn} ||= 'on';
  
   return $params;
 }
@@ -166,11 +167,18 @@ sub handleSOAPFORMAT {
 
   writeDebug("called handleSOAPFORMAT()");
   my $theId = $params->{_DEFAULT} || $params->{id};
-  return inlineError("Error: no id") unless $theId;
+
+  unless ($theId) {
+    return '' if $params->{warn} eq 'off';
+    return inlineError("Error: no id");
+  }
 
   my $som = $knownSoms{$theId};
 
-  return inlineError("Error: unknown som id '$theId'") unless $som;
+  unless ($som) {
+    return '' if $params->{warn} eq 'off';
+    return inlineError("Error: unknown som id '$theId'");
+  }
 
   return formatResult($som, $params);
 }
@@ -212,9 +220,8 @@ sub stringify {
     $line =~ s/\$valueof\((.*?)\)/fromUtf8($som->valueof($1||'')||'')/ge;
 
     if ($line =~ /\$value\b/) {
-      my $value = $dataItem->value() ||'';
-
-      #print STDERR "value=$value ref=".ref($value)."\n";
+      my $value = $dataItem->value();
+      $value = '' unless defined $value;
 
       my @values = ();
       if (!ref($value) || ref($value) eq "SCALAR") {

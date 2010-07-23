@@ -35,6 +35,7 @@ xpath expressions.
 | verbatim="on/off" | this behaves like =raw="on"= basically but also pretty-prints the output to ease reading the xml and then puts it into a &lt;verbatim> environment to format it as html |
 | valueof="..." | xpath expression to filter the output |
 | depth="int" | the depth to which an XML response object should be traversed while rendering it using =format=, =header=, =footer= and =separator= |
+| warn="on/off" | if switched off all error warnings will be suppressed (defaults to on) |
 
 
 Any additional parameter like for example =EMPLOYEEID= in
@@ -180,6 +181,8 @@ Every message created by !SoapPlugin adds a set of foswiki-specific headers whic
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  14 Jun 2010: | added =warn= parameter to suppress error messages; \
+                  fixed perl rookie error for default values retrieved from a SOM object |
 |  10 May 2010: | added support for nested argument structures |
 |  19 Mar 2010: | rewrite of serializer; implemented =$valueof()= etc; fixed UTF8 handling |
 |  16 Mar 2010: | initial release |

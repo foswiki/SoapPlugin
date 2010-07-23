@@ -122,7 +122,7 @@ sub parseParams {
   $result ||= [];
 
   foreach my $key (keys %$params) {
-    next if $key =~ /^(_.*|format|header|footer|separator|hidenull|method|verbatim|raw|valueof)$/;
+    next if $key =~ /^(_.*|format|header|footer|separator|hidenull|method|verbatim|raw|valueof|id|warn)$/;
     my $val = $params->{$key};
     my $attrs = new Foswiki::Attrs($val);
     my $data;
