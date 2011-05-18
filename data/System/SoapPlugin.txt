@@ -36,7 +36,11 @@ xpath expressions.
 | valueof="..." | xpath expression to filter the output |
 | depth="int" | the depth to which an XML response object should be traversed while rendering it using =format=, =header=, =footer= and =separator= |
 | warn="on/off" | if switched off all error warnings will be suppressed (defaults to on) |
+| cache="on/off" | toggles caching on or of (default is off) |
+| expire="seconds/units" | indicates the time the soap response is reused from cache if available instead of fetching it from the distant endpoint; =expire= can either be specified numerically in seconds or using a date expression like "10 minutes". Valid units are \
+  =s=, =second=, =seconds=, =sec=, =m=, =minute=, =minutes=, =min=, =h=, =hour=, =hours=, =d=, =day=, =days=, =w=, =week=, =weeks=, =M=, =month=, =months=, =y=, =year=, and =years=, as well as =now= and =never= |
 
+The cache can be invalidated manually by using a =refresh=soap= (or =refresh=on=) url parameter. 
 
 Any additional parameter like for example =EMPLOYEEID= in
 =%<nop>SOAP{"client-id" method="getVacationOfEmployee" EMPLOYEEID="1606"}%=
@@ -176,11 +180,15 @@ Every message created by !SoapPlugin adds a set of foswiki-specific headers whic
    * Set SHORTDESCRIPTION = %$SHORTDESCRIPTION%
 -->
 |  Author(s): | Foswiki:Main/MichaelDaum |
-|  Copyright: | &copy; 2010 Michael Daum http://michaeldaumconsulting.com |
+|  Copyright: | &copy; 2011 Michael Daum http://michaeldaumconsulting.com |
 |  License: | [[http://www.gnu.org/licenses/gpl.html][GPL (Gnu General Public License)]] |
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  18 May 2011: | implemented caching; \
+                  including a local version of SOAP::Lite with patches applied; \
+                  removed XML::Parser::Lite from the SOAP::Lite package as it is seriously broken; \
+                  new dependency on XML::Parser (the real thing) now |
 |  14 Jun 2010: | added =warn= parameter to suppress error messages; \
                   fixed perl rookie error for default values retrieved from a SOM object |
 |  10 May 2010: | added support for nested argument structures |

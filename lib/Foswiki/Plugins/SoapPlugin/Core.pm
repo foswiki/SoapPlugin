@@ -1,6 +1,6 @@
 # Plugin for Foswiki - The Free and Open Source Wiki, http://foswiki.org/
 #
-# SoapPlugin is Copyright (C) 2010 Michael Daum http://michaeldaumconsulting.com
+# SoapPlugin is Copyright (C) 2010-2011 Michael Daum http://michaeldaumconsulting.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -18,41 +18,106 @@ package Foswiki::Plugins::SoapPlugin::Core;
 use strict;
 use Foswiki::Plugins ();
 use Foswiki::Plugins::SoapPlugin::Client();
-use Unicode::MapUTF8 ();
-
-our $baseWeb;
-our $baseTopic;
-our %clients;
-our %knownSoms;
 
 use constant DEBUG => 0; # toggle me
 #use Data::Dumper ();
 
+##############################################################################
+sub new {
+  my ($class, $session) = @_;
+
+  my $this = bless({
+    session => $session,
+  }, $class);
+
+  foreach my $desc (@{$Foswiki::cfg{SoapPlugin}{Clients}}) {
+    $this->createClient($desc);
+  }
+  
+  return $this;
+}
+
 ###############################################################################
+sub createClient {
+  my ($this, $desc) = @_;
+
+  my $client = new Foswiki::Plugins::SoapPlugin::Client(%$desc);
+  writeDebug("created client $client->{id}");
+
+  return $this->client($client->{id}, $client);
+}
+
+###############################################################################
+sub client {
+  my ($this, $key, $value) = @_;
+
+  $this->{clients}{$key} = $value if defined $value;
+  return $this->{clients}{$key};
+}
+
+###############################################################################
+sub handleSOAP {
+  my ($this, $params, $theTopic, $theWeb) = @_;
+
+  writeDebug("called handleSOAP()");
+  
+  my $theClient = $params->{_DEFAULT} || $params->{client} || '';
+  normalizeParams($params);
+
+  my $client = $this->client($theClient);
+  return inlineError("unknown client '$theClient'") unless $client;
+  
+  my $method = $params->{method} || $client->{defaultMethod};
+  return inlineError("no method") unless $method;
+
+  my ($som, $error) = $client->call($method, $params);
+  $error ||= '';
+
+  return inlineError("Error during SOAP call $error") unless $som;
+
+  my $theId = $params->{id};
+  $this->{knownSoms}{$theId} = $som if $theId;
+
+  return '' if defined $theId && 
+    !$params->{format} &&
+    !$params->{verbatim};
+
+  return formatResult($som, $params);
+}
+
+###############################################################################
+sub handleSOAPFORMAT {
+  my ($this, $params, $theTopic, $theWeb) = @_;
+
+  normalizeParams($params);
+
+  writeDebug("called handleSOAPFORMAT()");
+  my $theId = $params->{_DEFAULT} || $params->{id};
+
+  unless ($theId) {
+    return '' if $params->{warn} eq 'off';
+    return inlineError("Error: no id");
+  }
+
+  my $som = $this->{knownSoms}{$theId};
+
+  unless ($som) {
+    return '' if $params->{warn} eq 'off';
+    return inlineError("Error: unknown som id '$theId'");
+  }
+
+  return formatResult($som, $params);
+}
+
+
+###############################################################################
+# static
 sub writeDebug {
   print STDERR "SoapPlugin::Core - $_[0]\n" if DEBUG;
 }
 
 ##############################################################################
-sub init {
-  ($baseWeb, $baseTopic) = @_;
-
-  writeDebug("called init");
-
-  foreach my $desc (@{$Foswiki::cfg{SoapPlugin}{Clients}}) {
-    my $client = new Foswiki::Plugins::SoapPlugin::Client(%$desc);
-    $clients{$client->{id}} = $client;
-    writeDebug("created client $client->{id}");
-  }
-}
-
-##############################################################################
-sub finish {
-  undef %clients;
-  undef %knownSoms;
-}
-
-##############################################################################
+# static
 sub inlineError {
   my $msg = shift;
 
@@ -60,6 +125,7 @@ sub inlineError {
 }
 
 ###############################################################################
+# static
 sub prettyPrint {
   my $xml = shift;
 
@@ -79,7 +145,7 @@ sub prettyPrint {
   );
 
   if ($exit) {
-    return inlineError("Error linting xml: "+$output);
+    return inlineError("Error linting xml: ".$output);
   }
 
   $output =~ s/<\?.*?\?>[\n\r]?//g;
@@ -88,36 +154,7 @@ sub prettyPrint {
 }
 
 ###############################################################################
-sub handleSOAP {
-  my ($session, $params, $theTopic, $theWeb) = @_;
-
-  writeDebug("called handleSOAP()");
-  
-  my $theClient = $params->{_DEFAULT} || $params->{client} || '';
-  normalizeParams($params);
-
-  my $client = $clients{$theClient};
-  return inlineError("unknown client '$theClient'") unless $client;
-  
-  my $method = $params->{method} || $client->{defaultMethod};
-  return inlineError("no method") unless $method;
-
-  my ($som, $error) = $client->call($method, $params);
-  $error ||= '';
-
-  return inlineError("Error during SOAP call $error") unless $som;
-
-  my $theId = $params->{id};
-  $knownSoms{$theId} = $som if $theId;
-
-  return '' if defined $theId && 
-    !$params->{format} &&
-    !$params->{verbatim};
-
-  return formatResult($som, $params);
-}
-
-###############################################################################
+# static
 sub normalizeParams {
   my $params = shift;
 
@@ -136,12 +173,13 @@ sub normalizeParams {
 }
 
 ###############################################################################
+# static
 sub formatResult {
   my ($som, $params) = @_;
 
   writeDebug("called formatResult");
   if ($params->{raw} || $params->{verbatim}) {
-    my $content = $som->context->transport->http_response->content;
+    my $content = $som->{_foswiki_content} || $som->context->transport->http_response->content;
     return $content if $params->{raw};
     $content = prettyPrint($content);
     return '<verbatim>'.$content.'</verbatim>';
@@ -160,30 +198,7 @@ sub formatResult {
 }
 
 ###############################################################################
-sub handleSOAPFORMAT {
-  my ($session, $params, $theTopic, $theWeb) = @_;
-
-  normalizeParams($params);
-
-  writeDebug("called handleSOAPFORMAT()");
-  my $theId = $params->{_DEFAULT} || $params->{id};
-
-  unless ($theId) {
-    return '' if $params->{warn} eq 'off';
-    return inlineError("Error: no id");
-  }
-
-  my $som = $knownSoms{$theId};
-
-  unless ($som) {
-    return '' if $params->{warn} eq 'off';
-    return inlineError("Error: unknown som id '$theId'");
-  }
-
-  return formatResult($som, $params);
-}
-
-###############################################################################
+# static
 sub stringify {
   my ($som, $params, $data, $depth) = @_;
 
@@ -244,6 +259,8 @@ sub stringify {
 	  push @values, stringify($som, $params, [SOAP::Data->new(name=>$key, value=>$value->{$key})], $depth+1);
 	  $index++;
 	}
+      } elsif (ref($value) eq "REF") {
+	push @values, ref($$value);
       } else {
 	push @values, ref($value);
       }
@@ -260,25 +277,75 @@ sub stringify {
 }
 
 ###############################################################################
-sub toUtf8 {
-  my $text = shift;
+# static
+sub fromUtf8 {
+  my $string = shift;
 
-  $text = Unicode::MapUTF8::to_utf8(-string=>$text, -charset=>$Foswiki::cfg{Site}{CharSet})
-    if $Foswiki::cfg{Site}{CharSet} !~ /^utf-?8$/i;
+  my $charset = $Foswiki::cfg{Site}{CharSet};
+  return $string if $charset =~ /^utf-?8$/i;
 
-  return $text;
+  if ($] < 5.008) {
+
+    # use Unicode::MapUTF8 for Perl older than 5.8
+    require Unicode::MapUTF8;
+    if (Unicode::MapUTF8::utf8_supported_charset($charset)) {
+      return Unicode::MapUTF8::from_utf8({ -string => $string, -charset => $charset });
+    } else {
+      print STDERR "Warning: Conversion from $charset no supported, ' . 'or name not recognised - check perldoc Unicode::MapUTF8\n";
+      return $string;
+    }
+  } else {
+
+    # good Perl version, just use Encode
+    require Encode;
+    import Encode;
+    my $encoding = Encode::resolve_alias($charset);
+    if (not $encoding) {
+      print STDERR "Warning: Conversion to $charset not supported, or name not recognised - check 'perldoc Encode::Supported'\n";
+      return $string;
+    } else {
+
+      # converts to $charset, generating HTML NCR's when needed
+      my $octets = $string;
+      $octets = Encode::decode('utf-8', $string) unless utf8::is_utf8($string);
+      return Encode::encode($encoding, $octets, 0);#&Encode::FB_HTMLCREF());
+    }
+  }
 }
 
 ###############################################################################
-sub fromUtf8 {
-  my $text = shift;
+# static
+sub toUtf8 {
+  my $string = shift;
 
-  $text = Unicode::MapUTF8::from_utf8(-string=>$text, -charset=>$Foswiki::cfg{Site}{CharSet})
-    if $Foswiki::cfg{Site}{CharSet} !~ /^utf-?8$/i;
+  my $charset = $Foswiki::cfg{Site}{CharSet};
+  return $string if $charset =~ /^utf-?8$/i;
 
-  return $text;
+  if ($] < 5.008) {
+
+    # use Unicode::MapUTF8 for Perl older than 5.8
+    require Unicode::MapUTF8;
+    if (Unicode::MapUTF8::utf8_supported_charset($charset)) {
+      return Unicode::MapUTF8::to_utf8({ -string => $string, -charset => $charset });
+    } else {
+      print STDERR "Warning: Conversion from $charset no supported, or name not recognised - check 'perldoc Unicode::MapUTF8'\n";
+      return $string;
+    }
+  } else {
+
+    # good Perl version, just use Encode
+    require Encode;
+    import Encode;
+    my $encoding = Encode::resolve_alias($charset);
+    if (not $encoding) {
+      print STDERR "Warning: Conversion to $charset not supported, or name not recognised - check 'perldoc Encode::Supported'\n";
+      return undef;
+    } else {
+      my $octets = Encode::decode($encoding, $string, &Encode::FB_PERLQQ());
+      $octets = Encode::encode('utf-8', $octets) unless utf8::is_utf8($octets);
+      return $octets;
+    }
+  }
 }
-
-
 1;
 

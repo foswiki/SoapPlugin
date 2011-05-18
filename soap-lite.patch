@@ -1,0 +1,70 @@
+--- Lite.pm	2011-05-03 17:51:45.916977954 +0200
++++ /tmp/Lite.pm	2011-05-03 17:51:42.596978052 +0200
+@@ -1874,39 +1874,39 @@
+         : @{$self->{_current}} ? (SOAP::Utils::splitlongname(o_lname($self->{_current}->[0])))[0] : undef;
+ }
+ 
+-#sub _as_data {
+-#    my $self = shift;
+-#    my $pointer = shift;
+-#
+-#    SOAP::Data
+-#        -> new(prefix => '', name => o_qname($pointer), name => o_lname($pointer), attr => o_lattr($pointer))
+-#        -> set_value(o_value($pointer));
+-#}
+-
+ sub _as_data {
+     my $self = shift;
+-    my $node = shift;
++    my $pointer = shift;
+ 
+-    my $data = SOAP::Data->new( prefix => '',
+-        # name => o_qname has side effect: sets namespace !
+-        name => o_qname($node),
+-        name => o_lname($node),
+-        attr => o_lattr($node) );
+-
+-    if ( defined o_child($node) ) {
+-        my @children;
+-        foreach my $child ( @{ o_child($node) } ) {
+-            push( @children, $self->_as_data($child) );
+-        }
+-        $data->set_value( \SOAP::Data->value(@children) );
+-    }
+-    else {
+-        $data->set_value( o_value($node) );
+-    }
+-
+-    return $data;
++    SOAP::Data
++        -> new(prefix => '', name => o_qname($pointer), name => o_lname($pointer), attr => o_lattr($pointer))
++        -> set_value(o_value($pointer));
+ }
+ 
++#sub _as_data {
++#    my $self = shift;
++#    my $node = shift;
++#
++#    my $data = SOAP::Data->new( prefix => '',
++#	# name => o_qname has side effect: sets namespace !
++#	name => o_qname($node),
++#	name => o_lname($node),
++#	attr => o_lattr($node) );
++#
++#    if ( defined o_child($node) ) {
++#	my @children;
++#	foreach my $child ( @{ o_child($node) } ) {
++#	    push( @children, $self->_as_data($child) );
++#	}
++#	$data->set_value( \SOAP::Data->value(@children) );
++#    }
++#    else {
++#	$data->set_value( o_value($node) );
++#    }
++#
++#    return $data;
++#}
++
+ 
+ sub match {
+     my $self = shift;
