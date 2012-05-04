@@ -15,7 +15,6 @@ use strict;
 our $VERSION = 0.712;
 use XMLRPC::Lite;
 
-
 use SOAP::Transport::TCP;
 
 # ======================================================================
@@ -24,7 +23,8 @@ package XMLRPC::Transport::TCP::Server;
 
 @XMLRPC::Transport::TCP::Server::ISA = qw(SOAP::Transport::TCP::Server);
 
-sub initialize; *initialize = \&XMLRPC::Server::initialize;
+sub initialize;
+*initialize = \&XMLRPC::Server::initialize;
 
 # ======================================================================
 

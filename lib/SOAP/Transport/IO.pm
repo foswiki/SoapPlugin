@@ -16,6 +16,7 @@ our $VERSION = 0.711;
 
 use IO::File;
 use SOAP::Lite;
+
 # ======================================================================
 
 package SOAP::Transport::IO::Server;
@@ -38,12 +39,13 @@ sub in {
     my $self = shift;
     $self = $self->new() if not ref $self;
 
-    return $self->{ _in } if not @_;
+    return $self->{_in} if not @_;
 
     my $file = shift;
-    $self->{_in} = (defined $file && !ref $file && !defined fileno($file))
-        ? IO::File->new($file, 'r')
-        : $file;
+    $self->{_in} =
+      ( defined $file && !ref $file && !defined fileno($file) )
+      ? IO::File->new( $file, 'r' )
+      : $file;
     return $self;
 }
 
@@ -51,12 +53,13 @@ sub out {
     my $self = shift;
     $self = $self->new() if not ref $self;
 
-    return $self->{ _out } if not @_;
+    return $self->{_out} if not @_;
 
     my $file = shift;
-    $self->{_out} = (defined $file && !ref $file && !defined fileno($file))
-        ? IO::File->new($file, 'w')
-        : $file;
+    $self->{_out} =
+      ( defined $file && !ref $file && !defined fileno($file) )
+      ? IO::File->new( $file, 'w' )
+      : $file;
     return $self;
 }
 
@@ -64,13 +67,13 @@ sub handle {
     my $self = shift->new;
 
     $self->in(*STDIN)->out(*STDOUT) unless defined $self->in;
-    my $in = $self->in;
+    my $in  = $self->in;
     my $out = $self->out;
 
-    my $result = $self->SUPER::handle(join '', <$in>);
+    my $result = $self->SUPER::handle( join '', <$in> );
     no strict 'refs';
     print {$out} $result
-        if defined $out;
+      if defined $out;
     return;
 }
 

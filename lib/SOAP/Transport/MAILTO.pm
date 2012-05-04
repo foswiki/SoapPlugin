@@ -12,10 +12,9 @@ package SOAP::Transport::MAILTO;
 
 use strict;
 
-
 our $VERSION = 0.711;
 
-use MIME::Lite; 
+use MIME::Lite;
 use URI;
 
 # ======================================================================
@@ -27,15 +26,20 @@ use vars qw(@ISA);
 
 sub DESTROY { SOAP::Trace::objects('()') }
 
-sub new { 
+sub new {
     my $class = shift;
     return $class if ref $class;
 
-    my(@params, @methods);
-    while (@_) { $class->can($_[0]) ? push(@methods, shift() => shift) : push(@params, shift) }
+    my ( @params, @methods );
+    while (@_) {
+        $class->can( $_[0] )
+          ? push( @methods, shift() => shift )
+          : push( @params,  shift );
+    }
     my $self = bless {@params} => $class;
-    while (@methods) { my($method, $params) = splice(@methods,0,2);
-        $self->$method(ref $params eq 'ARRAY' ? @$params : $params) 
+    while (@methods) {
+        my ( $method, $params ) = splice( @methods, 0, 2 );
+        $self->$method( ref $params eq 'ARRAY' ? @$params : $params );
     }
     SOAP::Trace::objects('()');
 
@@ -43,47 +47,51 @@ sub new {
 }
 
 sub send_receive {
-    my($self, %parameters) = @_;
-    my($envelope, $endpoint, $action) = 
-        @parameters{qw(envelope endpoint action)};
+    my ( $self, %parameters ) = @_;
+    my ( $envelope, $endpoint, $action ) =
+      @parameters{qw(envelope endpoint action)};
 
     $endpoint ||= $self->endpoint;
     my $uri = URI->new($endpoint);
-    %parameters = (%$self,
-        map {URI::Escape::uri_unescape($_)}
-            map {split/=/,$_,2}
-                split /[&;]/, $uri->query || '');
+    %parameters = (
+        %$self,
+        map { URI::Escape::uri_unescape($_) }
+          map { split /=/, $_, 2 }
+          split /[&;]/,
+        $uri->query || ''
+    );
 
     my $msg = MIME::Lite->new(
-        To         => $uri->to,
-        Type       => 'text/xml',
-        Encoding   => $parameters{Encoding} || 'base64',
-        Data       => $envelope,
-        $parameters{From}
-            ? (From => $parameters{From})
-            : (),
-        $parameters{'Reply-To'}
-            ? ('Reply-To' => $parameters{'Reply-To'})
-            : (),
-        $parameters{Subject}
-            ? (Subject    => $parameters{Subject})
-            : (),
+        To       => $uri->to,
+        Type     => 'text/xml',
+        Encoding => $parameters{Encoding} || 'base64',
+        Data     => $envelope,
+        $parameters{From} ? ( From => $parameters{From} )
+        : (),
+        $parameters{'Reply-To'} ? ( 'Reply-To' => $parameters{'Reply-To'} )
+        : (),
+        $parameters{Subject} ? ( Subject => $parameters{Subject} )
+        : (),
     );
-    $msg->replace('X-Mailer' => join '/', 'SOAP::Lite', 'Perl', SOAP::Transport::MAILTO->VERSION);
-    $msg->add(SOAPAction => $action);
+    $msg->replace(
+        'X-Mailer' => join '/',
+        'SOAP::Lite', 'Perl', SOAP::Transport::MAILTO->VERSION
+    );
+    $msg->add( SOAPAction => $action );
 
     SOAP::Trace::transport($msg);
-    SOAP::Trace::debug($msg->as_string);
+    SOAP::Trace::debug( $msg->as_string );
 
-    MIME::Lite->send(map {exists $parameters{$_}
-        ? ($_ => $parameters{$_})
-        : ()} 'smtp', 'sendmail');
+    MIME::Lite->send(
+        map { exists $parameters{$_} ? ( $_ => $parameters{$_} ) : () } 'smtp',
+        'sendmail'
+    );
     eval { local $SIG{__DIE__}; $MIME::Lite::AUTO_CC = 0; $msg->send };
-    (my $code = $@) =~ s/ at .*\n//;
+    ( my $code = $@ ) =~ s/ at .*\n//;
 
     $self->code($code);
     $self->message($code);
-    $self->is_success(!defined $code || $code eq '');
+    $self->is_success( !defined $code || $code eq '' );
     $self->status($code);
 
     return;

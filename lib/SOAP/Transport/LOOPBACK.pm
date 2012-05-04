@@ -1,7 +1,7 @@
 # ======================================================================
 #
 # Copyright (C) 2007 Martin Kutter.
-# Part of SOAP-Lite, Copyright (C) 2000-2001 Paul Kulchenko 
+# Part of SOAP-Lite, Copyright (C) 2000-2001 Paul Kulchenko
 #  (paulclinger@yahoo.com)
 # You may distribute/modify this file under the same terms as perl itself.
 #
@@ -24,8 +24,8 @@ sub new {
 }
 
 sub send_receive {
-    my($self, %parameters) = @_;
-    
+    my ( $self, %parameters ) = @_;
+
     $self->code(200);
     $self->message('OK');
     $self->is_success(1);

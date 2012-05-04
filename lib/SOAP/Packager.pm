@@ -15,66 +15,68 @@ use vars;
 
 use vars qw($VERSION $SUPPORTED_TYPES);
 use version; $VERSION = qv('0.710.10');
-$SUPPORTED_TYPES = { };
+$SUPPORTED_TYPES = {};
 
 sub BEGIN {
-  no strict 'refs';
-  for my $method ( qw(parser headers_http persist_parts) ) {
-    my $field = '_' . $method;
-    *$method = sub {
-      my $self = shift;
-      if (@_) { $self->{$field} = shift; return $self }
-      return $self->{$field};
+    no strict 'refs';
+    for my $method (qw(parser headers_http persist_parts)) {
+        my $field = '_' . $method;
+        *$method = sub {
+            my $self = shift;
+            if (@_) { $self->{$field} = shift; return $self }
+            return $self->{$field};
+          }
     }
-  }
 }
 
 sub new {
-    my($class)  = shift;
-    my(%params) = @_;
+    my ($class)  = shift;
+    my (%params) = @_;
     bless {
-        "_parts"         => [ ],
+        "_parts"         => [],
         "_parser"        => undef,
         "_persist_parts" => 0,
     }, $class;
 }
 
 sub is_supported_part {
-  my $self = shift;
-  return $SUPPORTED_TYPES->{ref $_[0]};
+    my $self = shift;
+    return $SUPPORTED_TYPES->{ ref $_[0] };
 }
 
 sub parts {
-  my $self = shift;
-  if (@_) {
-    $self->{'_parts'} = shift;
-  }
-  return $self->{'_parts'};
+    my $self = shift;
+    if (@_) {
+        $self->{'_parts'} = shift;
+    }
+    return $self->{'_parts'};
 }
 
 # This is a static method that helps find the right Packager
 sub find_packager {
-   # TODO - Input:
-   #        * the mimetype of the data to be decoded raw data that needs
-   #        * the data to be decoded
-   #        Returns:
-   #        * the proper SOAP::Packager instance
+
+    # TODO - Input:
+    #        * the mimetype of the data to be decoded raw data that needs
+    #        * the data to be decoded
+    #        Returns:
+    #        * the proper SOAP::Packager instance
 }
 
 sub push_part {
-   my $self = shift;
-   my ($part) = @_;
-   push @{$self->{'_parts'}}, $part;
+    my $self = shift;
+    my ($part) = @_;
+    push @{ $self->{'_parts'} }, $part;
 }
 
 sub package {
+
     # do nothing
     die "SOAP::Packager::package() must be implemented";
 }
 
 sub unpackage {
-   my $self = shift;
-   $self->{'_parts'} = [] if !$self->persist_parts; # experimental
+    my $self = shift;
+    $self->{'_parts'} = [] if !$self->persist_parts;    # experimental
 }
 
 # ======================================================================
@@ -86,15 +88,15 @@ use vars qw(@ISA);
 @ISA = qw(SOAP::Packager);
 
 sub BEGIN {
-  no strict 'refs';
-  for my $method ( qw(transfer_encoding env_id env_location) ) {
-    my $field = '_' . $method;
-    *$method = sub {
-      my $self = shift;
-      if (@_) { $self->{$field} = shift; return $self }
-      return $self->{$field};
+    no strict 'refs';
+    for my $method (qw(transfer_encoding env_id env_location)) {
+        my $field = '_' . $method;
+        *$method = sub {
+            my $self = shift;
+            if (@_) { $self->{$field} = shift; return $self }
+            return $self->{$field};
+          }
     }
-  }
 }
 
 sub new {
@@ -109,152 +111,178 @@ sub new {
 }
 
 sub initialize_parser {
-  my $self = shift;
-  eval "require MIME::Parser;";
-  die "Could not find MIME::Parser - is MIME::Tools installed? Aborting." if $@;
-  $self->{'_parser'} = MIME::Parser->new;
-  $self->{'_parser'}->output_to_core('ALL');
-  $self->{'_parser'}->tmp_to_core(1);
-  $self->{'_parser'}->ignore_errors(1);
+    my $self = shift;
+    eval "require MIME::Parser;";
+    die "Could not find MIME::Parser - is MIME::Tools installed? Aborting."
+      if $@;
+    $self->{'_parser'} = MIME::Parser->new;
+    $self->{'_parser'}->output_to_core('ALL');
+    $self->{'_parser'}->tmp_to_core(1);
+    $self->{'_parser'}->ignore_errors(1);
 }
 
 sub generate_random_string {
-  my ($self,$len) = @_;
-  my @chars=('a'..'z','A'..'Z','0'..'9','_');
-  my $random_string;
-  foreach (1..$len) {
-    $random_string .= $chars[rand @chars];
-  }
-  return $random_string;
+    my ( $self, $len ) = @_;
+    my @chars = ( 'a' .. 'z', 'A' .. 'Z', '0' .. '9', '_' );
+    my $random_string;
+    foreach ( 1 .. $len ) {
+        $random_string .= $chars[ rand @chars ];
+    }
+    return $random_string;
 }
 
 sub get_multipart_id {
-  my ($id) = shift;
-  ($id || '') =~ /^<?([^>]+)>?$/; $1 || '';
+    my ($id) = shift;
+    ( $id || '' ) =~ /^<?([^>]+)>?$/;
+    $1 || '';
 }
 
 sub package {
-   my $self = shift;
-   my ($envelope,$context) = @_;
-   return $envelope if (!$self->parts); # if there are no parts,
-                                        # then there is nothing to do
-   require MIME::Entity;
-   local $MIME::Entity::BOUNDARY_DELIMITER = "\r\n";
-   my $top = MIME::Entity->build('Type'     => "Multipart/Related");
-   my $soapversion = defined($context) ? $context->soapversion : '1.1';
-   $top->attach('Type'                      => $soapversion == 1.1 ? "text/xml" : "application/soap+xml",
-                'Content-Transfer-Encoding' => $self->transfer_encoding(),
-                'Content-Location'          => $self->env_location(),
-                'Content-ID'                => $self->env_id(),
-                'Data'                      => $envelope );
-   # consume the attachments that come in as input by 'shift'ing
-   no strict 'refs';
-   while (my $part = shift(@{$self->parts})) {
-      $top->add_part($part);
-   }
-   # determine MIME boundary
-   my $boundary = $top->head->multipart_boundary;
-   $self->headers_http({ 'Content-Type' => 'Multipart/Related; type="text/xml"; start="<main_envelope>"; boundary="'.$boundary.'"'});
-   return $top->stringify_body;
+    my $self = shift;
+    my ( $envelope, $context ) = @_;
+    return $envelope if ( !$self->parts );    # if there are no parts,
+                                              # then there is nothing to do
+    require MIME::Entity;
+    local $MIME::Entity::BOUNDARY_DELIMITER = "\r\n";
+    my $top = MIME::Entity->build( 'Type' => "Multipart/Related" );
+    my $soapversion = defined($context) ? $context->soapversion : '1.1';
+    $top->attach(
+        'Type' => $soapversion == 1.1 ? "text/xml" : "application/soap+xml",
+        'Content-Transfer-Encoding' => $self->transfer_encoding(),
+        'Content-Location'          => $self->env_location(),
+        'Content-ID'                => $self->env_id(),
+        'Data'                      => $envelope
+    );
+
+    # consume the attachments that come in as input by 'shift'ing
+    no strict 'refs';
+    while ( my $part = shift( @{ $self->parts } ) ) {
+        $top->add_part($part);
+    }
+
+    # determine MIME boundary
+    my $boundary = $top->head->multipart_boundary;
+    $self->headers_http(
+        {
+            'Content-Type' =>
+'Multipart/Related; type="text/xml"; start="<main_envelope>"; boundary="'
+              . $boundary . '"'
+        }
+    );
+    return $top->stringify_body;
 }
 
 sub unpackage {
-  my $self = shift;
-  my ($raw_input,$context) = @_;
-  $self->SUPER::unpackage();
+    my $self = shift;
+    my ( $raw_input, $context ) = @_;
+    $self->SUPER::unpackage();
 
-  # Parse the raw input into a MIME::Entity structure.
-  #   - fail if the raw_input is not MIME formatted
-  $self->initialize_parser() if !defined($self->parser);
-  my $entity = eval { $self->parser->parse_data($raw_input) }
-    or die "Something wrong with MIME message: @{[$@ || $self->parser->last_error]}\n";
+    # Parse the raw input into a MIME::Entity structure.
+    #   - fail if the raw_input is not MIME formatted
+    $self->initialize_parser() if !defined( $self->parser );
+    my $entity = eval { $self->parser->parse_data($raw_input) }
+      or die
+"Something wrong with MIME message: @{[$@ || $self->parser->last_error]}\n";
 
-  my $env = undef;
-  # major memory bloat below! TODO - fix!
-  if (lc($entity->head->mime_type) eq 'multipart/form-data') {
-    $env = $self->process_form_data($entity);
-  } elsif (lc($entity->head->mime_type) eq 'multipart/related') {
-    $env = $self->process_related($entity);
-  } elsif (lc($entity->head->mime_type) eq 'text/xml') {
-    # I don't think this ever gets called.
-    # warn "I am somewhere in the SOAP::Packager::MIME code I didn't know I would be in!";
-    $env = $entity->bodyhandle->as_string;
-  } else {
-    die "Can't handle MIME messsage with specified type (@{[$entity->head->mime_type]})\n";
-  }
+    my $env = undef;
 
-  # return the envelope
-  if ($env) {
-    return $env;
-  } elsif ($entity->bodyhandle->as_string) {
-    return $entity->bodyhandle->as_string;
-  } else {
-    die "No content in MIME message\n";
-  }
+    # major memory bloat below! TODO - fix!
+    if ( lc( $entity->head->mime_type ) eq 'multipart/form-data' ) {
+        $env = $self->process_form_data($entity);
+    }
+    elsif ( lc( $entity->head->mime_type ) eq 'multipart/related' ) {
+        $env = $self->process_related($entity);
+    }
+    elsif ( lc( $entity->head->mime_type ) eq 'text/xml' ) {
+
+# I don't think this ever gets called.
+# warn "I am somewhere in the SOAP::Packager::MIME code I didn't know I would be in!";
+        $env = $entity->bodyhandle->as_string;
+    }
+    else {
+        die
+"Can't handle MIME messsage with specified type (@{[$entity->head->mime_type]})\n";
+    }
+
+    # return the envelope
+    if ($env) {
+        return $env;
+    }
+    elsif ( $entity->bodyhandle->as_string ) {
+        return $entity->bodyhandle->as_string;
+    }
+    else {
+        die "No content in MIME message\n";
+    }
 }
 
 sub process_form_data {
-  my ($self, $entity) = @_;
-  my $env = undef;
-  foreach my $part ($entity->parts) {
-    my $name = $part->head->mime_attr('content-disposition.name');
-    $name eq 'payload' ?
-      $env = $part->bodyhandle->as_string
-	: $self->push_part($part);
-  }
-  return $env;
+    my ( $self, $entity ) = @_;
+    my $env = undef;
+    foreach my $part ( $entity->parts ) {
+        my $name = $part->head->mime_attr('content-disposition.name');
+        $name eq 'payload'
+          ? $env = $part->bodyhandle->as_string
+          : $self->push_part($part);
+    }
+    return $env;
 }
 
 sub process_related {
-  my $self = shift;
-  my ($entity) = @_;
-  die "Multipart MIME messages MUST declare Multipart/Related content-type"
-    if ($entity->head->mime_attr('content-type') !~ /^multipart\/related/i);
-  # As it turns out, the Content-ID and start parameters are optional
-  # according to the MIME and SOAP specs. In the event that the head cannot
-  # be found, the head/root entity is used as a starting point.
+    my $self = shift;
+    my ($entity) = @_;
+    die "Multipart MIME messages MUST declare Multipart/Related content-type"
+      if ( $entity->head->mime_attr('content-type') !~ /^multipart\/related/i );
+
+    # As it turns out, the Content-ID and start parameters are optional
+    # according to the MIME and SOAP specs. In the event that the head cannot
+    # be found, the head/root entity is used as a starting point.
     # [19 Mar 2008] Modified by Feng Li <feng.li@sybase.com>
     # Check optional start parameter, then optional Content-ID, then create/add
     # Content-ID (the same approach as in SOAP::Lite 0.66)
 
-    #my $start = get_multipart_id($entity->head->mime_attr('content-type.start'));
-    my $start = get_multipart_id($entity->head->mime_attr('content-type.start'))
-        || get_multipart_id($entity->parts(0)->head->mime_attr('content-id'));
+  #my $start = get_multipart_id($entity->head->mime_attr('content-type.start'));
+    my $start =
+         get_multipart_id( $entity->head->mime_attr('content-type.start') )
+      || get_multipart_id( $entity->parts(0)->head->mime_attr('content-id') );
 
-  if (!defined($start) || $start eq "") {
-      $start = $self->generate_random_string(10);
-      $entity->parts(0)->head->add('content-id',$start);
-  }
-  my $location = $entity->head->mime_attr('content-location') ||
-    'thismessage:/';
-  my $env;
-  foreach my $part ($entity->parts) {
-    next if !UNIVERSAL::isa($part => "MIME::Entity");
-
-    # Weird, the following use of head->get(SCALAR[,INDEX]) doesn't work as
-    # expected. Work around is to eliminate the INDEX.
-    my $pid = get_multipart_id($part->head->mime_attr('content-id'));
-
-    # If Content-ID is not supplied, then generate a random one (HACK - because
-    # MIME::Entity does not do this as it should... content-id is required
-    # according to MIME specification)
-    $pid = $self->generate_random_string(10) if $pid eq '';
-    my $type = $part->head->mime_type;
-
-    # If a Content-Location header cannot be found, this will look for an
-    # alternative in the following MIME Header attributes
-    my $plocation = $part->head->get('content-location') ||
-      $part->head->mime_attr('Content-Disposition.filename') ||
-	$part->head->mime_attr('Content-Type.name');
-    if ($start && $pid eq $start) {
-      $env = $part->bodyhandle->as_string;
-    } else {
-      $self->push_part($part);
+    if ( !defined($start) || $start eq "" ) {
+        $start = $self->generate_random_string(10);
+        $entity->parts(0)->head->add( 'content-id', $start );
     }
-  }
-#  die "Can't find 'start' parameter in multipart MIME message\n"
-#    if @{$self->parts} > 1 && !$start;
-  return $env;
+    my $location = $entity->head->mime_attr('content-location')
+      || 'thismessage:/';
+    my $env;
+    foreach my $part ( $entity->parts ) {
+        next if !UNIVERSAL::isa( $part => "MIME::Entity" );
+
+        # Weird, the following use of head->get(SCALAR[,INDEX]) doesn't work as
+        # expected. Work around is to eliminate the INDEX.
+        my $pid = get_multipart_id( $part->head->mime_attr('content-id') );
+
+     # If Content-ID is not supplied, then generate a random one (HACK - because
+     # MIME::Entity does not do this as it should... content-id is required
+     # according to MIME specification)
+        $pid = $self->generate_random_string(10) if $pid eq '';
+        my $type = $part->head->mime_type;
+
+        # If a Content-Location header cannot be found, this will look for an
+        # alternative in the following MIME Header attributes
+        my $plocation =
+             $part->head->get('content-location')
+          || $part->head->mime_attr('Content-Disposition.filename')
+          || $part->head->mime_attr('Content-Type.name');
+        if ( $start && $pid eq $start ) {
+            $env = $part->bodyhandle->as_string;
+        }
+        else {
+            $self->push_part($part);
+        }
+    }
+
+    #  die "Can't find 'start' parameter in multipart MIME message\n"
+    #    if @{$self->parts} > 1 && !$start;
+    return $env;
 }
 
 # ======================================================================
@@ -266,15 +294,15 @@ use vars qw(@ISA);
 @ISA = qw(SOAP::Packager);
 
 sub BEGIN {
-  no strict 'refs';
-  for my $method ( qw(foo) ) {
-    my $field = '_' . $method;
-    *$method = sub {
-      my $self = shift;
-      if (@_) { $self->{$field} = shift; return $self }
-      return $self->{$field};
+    no strict 'refs';
+    for my $method (qw(foo)) {
+        my $field = '_' . $method;
+        *$method = sub {
+            my $self = shift;
+            if (@_) { $self->{$field} = shift; return $self }
+            return $self->{$field};
+          }
     }
-  }
 }
 
 sub new {
@@ -286,63 +314,71 @@ sub new {
 }
 
 sub initialize_parser {
-  my $self = shift;
-  print STDERR "Initializing parser\n";
-  eval "require DIME::Parser;";
-  die "Could not find DIME::Parser - is DIME::Tools installed? Aborting." if $@;
-  $self->{'_parser'} = DIME::Parser->new;
+    my $self = shift;
+    print STDERR "Initializing parser\n";
+    eval "require DIME::Parser;";
+    die "Could not find DIME::Parser - is DIME::Tools installed? Aborting."
+      if $@;
+    $self->{'_parser'} = DIME::Parser->new;
 }
 
 sub package {
-   my $self = shift;
-   my ($envelope,$context) = @_;
-   return $envelope if (!$self->parts); # if there are no parts,
-                                        # then there is nothing to do
-   require DIME::Message;
-   require DIME::Payload;
-   my $message = DIME::Message->new;
-   my $top = DIME::Payload->new;
-   my $soapversion = defined($context) ? $context->soapversion : '1.1';
-   $top->attach('MIMEType' => $soapversion == 1.1 ?
-                  "http://schemas.xmlsoap.org/soap/envelope/" : "application/soap+xml",
-                'Data'     => $envelope );
-   $message->add_payload($top);
-   # consume the attachments that come in as input by 'shift'ing
-   no strict 'refs';
-   while (my $part = shift(@{$self->parts})) {
-      die "You are only allowed to add parts of type DIME::Payload to a DIME::Message"
-        if (!$part->isa('DIME::Payload'));
-#      print STDERR "Adding payload to DIME message: ".ref($part)."\n";
-      $message->add_payload($part);
-#      print STDERR "Payload's payload is: ".${$part->print_content_data}."\n";
-   }
-   $self->headers_http({ 'Content-Type' => 'application/dime' });
-   return $message->print_data;
+    my $self = shift;
+    my ( $envelope, $context ) = @_;
+    return $envelope if ( !$self->parts );    # if there are no parts,
+                                              # then there is nothing to do
+    require DIME::Message;
+    require DIME::Payload;
+    my $message     = DIME::Message->new;
+    my $top         = DIME::Payload->new;
+    my $soapversion = defined($context) ? $context->soapversion : '1.1';
+    $top->attach(
+          'MIMEType' => $soapversion == 1.1
+        ? "http://schemas.xmlsoap.org/soap/envelope/"
+        : "application/soap+xml",
+        'Data' => $envelope
+    );
+    $message->add_payload($top);
+
+    # consume the attachments that come in as input by 'shift'ing
+    no strict 'refs';
+    while ( my $part = shift( @{ $self->parts } ) ) {
+        die
+"You are only allowed to add parts of type DIME::Payload to a DIME::Message"
+          if ( !$part->isa('DIME::Payload') );
+
+        #      print STDERR "Adding payload to DIME message: ".ref($part)."\n";
+        $message->add_payload($part);
+
+ #      print STDERR "Payload's payload is: ".${$part->print_content_data}."\n";
+    }
+    $self->headers_http( { 'Content-Type' => 'application/dime' } );
+    return $message->print_data;
 }
 
 sub unpackage {
-  my $self = shift;
-  my ($raw_input,$context) = @_;
-  $self->SUPER::unpackage();
+    my $self = shift;
+    my ( $raw_input, $context ) = @_;
+    $self->SUPER::unpackage();
 
-  # Parse the raw input into a DIME::Message structure.
-  #   - fail if the raw_input is not DIME formatted
-  print STDERR "raw_data: $raw_input\n";
-  $self->initialize_parser() if !defined($self->parser);
-  my $message = eval { $self->parser->parse_data(\$raw_input) }
-    or die "Something wrong with DIME message: @{[$@]}\n";
+    # Parse the raw input into a DIME::Message structure.
+    #   - fail if the raw_input is not DIME formatted
+    print STDERR "raw_data: $raw_input\n";
+    $self->initialize_parser() if !defined( $self->parser );
+    my $message = eval { $self->parser->parse_data( \$raw_input ) }
+      or die "Something wrong with DIME message: @{[$@]}\n";
 
-  # The first payload is always the SOAP Message
-  # TODO - Error check
-  my @payloads = @{$message->{'_PAYLOADS'}};
-  my $env = shift(@payloads);
-  my $env_str = $env->print_content_data;
-  print STDERR "Received this envelope: ".$env_str."\n";
-  while (my $p = shift(@payloads)) {
-    print STDERR "Adding part to Packager\n";
-    $self->push_part($p);
-  }
-  return $env_str;
+    # The first payload is always the SOAP Message
+    # TODO - Error check
+    my @payloads = @{ $message->{'_PAYLOADS'} };
+    my $env      = shift(@payloads);
+    my $env_str  = $env->print_content_data;
+    print STDERR "Received this envelope: " . $env_str . "\n";
+    while ( my $p = shift(@payloads) ) {
+        print STDERR "Adding part to Packager\n";
+        $self->push_part($p);
+    }
+    return $env_str;
 }
 
 1;
