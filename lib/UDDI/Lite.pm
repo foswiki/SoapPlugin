@@ -12,15 +12,15 @@ package UDDI::Lite;
 use 5.006;
 use strict;
 {
-    our $VERSION = 0.712;
+our $VERSION = 0.712;
 }
-
 # ======================================================================
 
 package UDDI::Constants;
 our $VERSION = 0.712;
 
-BEGIN {
+BEGIN
+{
     use vars
       qw(%UDDI_VERSIONS $ELEMENTS $ATTRIBUTES $WITHNAMES $NAMESPACE $GENERIC);
 
@@ -49,7 +49,7 @@ BEGIN {
                     name             => 1
                 },
                 businessEntityExt => { businessEntity => 1 },
-                businessInfo =>
+                businessInfo      =>
                   { description => 1, name => 1, serviceInfos => 1 },
                 businessInfos   => { businessInfo  => 1 },
                 businessList    => { businessInfos => 1 },
@@ -68,16 +68,16 @@ BEGIN {
                     personName  => 1,
                     phone       => 1
                 },
-                contacts          => { contact        => 1 },
-                delete_binding    => { authInfo       => 1, bindingKey => 1 },
-                delete_business   => { authInfo       => 1, businessKey => 1 },
-                delete_service    => { authInfo       => 1, serviceKey => 1 },
-                delete_tModel     => { authInfo       => 1, tModelKey => 1 },
-                discard_authToken => { authInfo       => 1 },
-                discoveryURLs     => { discoveryUrl   => 1 },
-                dispositionReport => { result         => 1 },
-                findQualifiers    => { findQualifier  => 1 },
-                find_binding      => { findQualifiers => 1, tModelBag => 1 },
+                contacts          => { contact       => 1 },
+                delete_binding    => { authInfo      => 1, bindingKey => 1 },
+                delete_business   => { authInfo      => 1, businessKey => 1 },
+                delete_service    => { authInfo      => 1, serviceKey => 1 },
+                delete_tModel     => { authInfo      => 1, tModelKey => 1 },
+                discard_authToken => { authInfo      => 1 },
+                discoveryURLs     => { discoveryUrl  => 1 },
+                dispositionReport => { result        => 1 },
+                findQualifiers    => { findQualifier => 1 },
+                find_binding => { findQualifiers => 1, tModelBag => 1 },
                 find_business => {
                     categoryBag    => 1,
                     discoveryURLs  => 1,
@@ -105,16 +105,16 @@ BEGIN {
                 get_serviceDetail     => { serviceKey     => 1 },
                 get_tModelDetail      => { tModelKey      => 1 },
                 identifierBag         => { keyedReference => 1 },
-                instanceDetails =>
+                instanceDetails       =>
                   { description => 1, instanceParms => 1, overviewDoc => 1 },
-                overviewDoc    => { description   => 1, overviewURL     => 1 },
-                registeredInfo => { businessInfos => 1, tModelInfos     => 1 },
+                overviewDoc    => { description   => 1, overviewURL => 1 },
+                registeredInfo => { businessInfos => 1, tModelInfos => 1 },
                 result         => { errInfo       => 1 },
-                save_binding   => { authInfo      => 1, bindingTemplate => 1 },
+                save_binding  => { authInfo => 1, bindingTemplate => 1 },
                 save_business =>
                   { authInfo => 1, businessEntity => 1, uploadRegister => 1 },
                 save_service => { authInfo => 1, businessService => 1 },
-                save_tModel =>
+                save_tModel  =>
                   { authInfo => 1, tModel => 1, uploadRegister => 1 },
                 serviceDetail => { businessService => 1 },
                 serviceInfo   => { name            => 1 },
@@ -132,7 +132,7 @@ BEGIN {
                 tModelInfo            => { name               => 1 },
                 tModelInfos           => { tModelInfo         => 1 },
                 tModelInstanceDetails => { tModelInstanceInfo => 1 },
-                tModelInstanceInfo =>
+                tModelInstanceInfo    =>
                   { description => 1, instanceDetails => 1 },
                 tModelList              => { tModelInfos => 1 },
                 validate_categorization => {
@@ -142,7 +142,7 @@ BEGIN {
                     tModel          => 1,
                     tModelKey       => 1
                 }
-            },
+            },    
             ATTRIBUTES => {
                 accessPoint => { URLType  => 2 },
                 address     => { sortCode => 2, useType => 2 },
@@ -150,14 +150,15 @@ BEGIN {
                 bindingDetail =>
                   { generic => 2, operator => 2, truncated => 2 },
                 bindingTemplate => { bindingKey => 2, serviceKey => 2 },
-                businessDetail =>
+                businessDetail  =>
                   { generic => 2, operator => 2, truncated => 2 },
                 businessDetailExt =>
                   { generic => 2, operator => 2, truncated => 2 },
                 businessEntity =>
                   { authorizedName => 2, businessKey => 2, operator => 2 },
                 businessInfo => { businessKey => 2 },
-                businessList => { generic => 2, operator => 2, truncated => 2 },
+                businessList =>
+                  { generic => 2, operator => 2, truncated => 2 },
                 businessService   => { businessKey => 2, serviceKey => 2 },
                 contact           => { useType     => 2 },
                 delete_binding    => { generic     => 2 },
@@ -171,9 +172,10 @@ BEGIN {
                   { generic => 2, operator => 2, truncated => 2 },
                 email        => { useType => 2 },
                 errInfo      => { errCode => 2 },
-                find_binding => { generic => 2, maxRows => 2, serviceKey => 2 },
+                find_binding =>
+                  { generic => 2, maxRows => 2, serviceKey => 2 },
                 find_business => { generic => 2, maxRows => 2 },
-                find_service =>
+                find_service  =>
                   { businessKey => 2, generic => 2, maxRows => 2 },
                 find_tModel   => { generic => 2, maxRows => 2 },
                 get_authToken => { cred    => 2, generic => 2, userID => 2 },
@@ -184,9 +186,9 @@ BEGIN {
                 get_serviceDetail     => { generic    => 2 },
                 get_tModelDetail      => { generic    => 2 },
                 hostingRedirector     => { bindingKey => 2 },
-                keyedReference =>
+                keyedReference        =>
                   { keyName => 2, keyValue => 2, tModelKey => 2 },
-                phone => { useType => 2 },
+                phone          => { useType => 2 },
                 registeredInfo =>
                   { generic => 2, operator => 2, truncated => 2 },
                 result        => { errno   => 2, keyType => 2 },
@@ -197,10 +199,12 @@ BEGIN {
                 serviceDetail =>
                   { generic => 2, operator => 2, truncated => 2 },
                 serviceInfo => { businessKey => 2, serviceKey => 2 },
-                serviceList => { generic => 2, operator => 2, truncated => 2 },
+                serviceList =>
+                  { generic => 2, operator => 2, truncated => 2 },
                 tModel =>
                   { authorizedName => 2, operator => 2, tModelKey => 2 },
-                tModelDetail => { generic => 2, operator => 2, truncated => 2 },
+                tModelDetail =>
+                  { generic => 2, operator => 2, truncated => 2 },
                 tModelInfo         => { tModelKey => 2 },
                 tModelInstanceInfo => { tModelKey => 2 },
                 tModelList => { generic => 2, operator => 2, truncated => 2 },
@@ -210,7 +214,7 @@ BEGIN {
                 qw/accessPoint address addressLine authInfo authToken bindingDetail bindingKey bindingTemplate bindingTemplates businessDetail businessDetailExt businessEntity businessEntityExt businessInfo businessInfos businessKey businessList businessService businessServices categoryBag contact contacts description discoveryURLs discoveryUrl dispositionReport email errInfo findQualifier findQualifiers hostingRedirector identifierBag instanceDetails instanceParms keyValue keyedReference name overviewDoc overviewURL personName phone registeredInfo result serviceDetail serviceInfo serviceInfos serviceKey serviceList tModel tModelBag tModelDetail tModelInfo tModelInfos tModelInstanceDetails tModelInstanceInfo tModelKey tModelList uploadRegister/
             ],
             NAMESPACE => 'urn:uddi-org:api',
-            GENERIC   => '1.0',               # string, not number; '.0' matters
+            GENERIC   => '1.0',             # string, not number; '.0' matters
         },
         2 => {
             ELEMENTS => {
@@ -245,7 +249,7 @@ BEGIN {
                     name             => 1
                 },
                 businessEntityExt => { businessEntity => 1 },
-                businessInfo =>
+                businessInfo      =>
                   { description => 1, name => 1, serviceInfos => 1 },
                 businessInfos   => { businessInfo  => 1 },
                 businessList    => { businessInfos => 1 },
@@ -311,10 +315,10 @@ BEGIN {
                 get_serviceDetail       => { serviceKey     => 1 },
                 get_tModelDetail        => { tModelKey      => 1 },
                 identifierBag           => { keyedReference => 1 },
-                instanceDetails =>
+                instanceDetails         =>
                   { description => 1, instanceParms => 1, overviewDoc => 1 },
-                keysOwned   => { fromKey     => 1, toKey       => 1 },
-                overviewDoc => { description => 1, overviewURL => 1 },
+                keysOwned          => { fromKey     => 1, toKey       => 1 },
+                overviewDoc        => { description => 1, overviewURL => 1 },
                 publisherAssertion =>
                   { fromKey => 1, keyedReference => 1, toKey => 1 },
                 publisherAssertions => { publisherAssertion => 1 },
@@ -325,7 +329,7 @@ BEGIN {
                     name                => 1,
                     sharedRelationships => 1
                 },
-                relatedBusinessInfos => { relatedBusinessInfo => 1 },
+                relatedBusinessInfos  => { relatedBusinessInfo => 1 },
                 relatedBusinessesList =>
                   { businessKey => 1, relatedBusinessInfos => 1 },
                 result       => { errInfo  => 1 },
@@ -333,12 +337,12 @@ BEGIN {
                 save_business =>
                   { authInfo => 1, businessEntity => 1, uploadRegister => 1 },
                 save_service => { authInfo => 1, businessService => 1 },
-                save_tModel =>
+                save_tModel  =>
                   { authInfo => 1, tModel => 1, uploadRegister => 1 },
-                serviceDetail => { businessService => 1 },
-                serviceInfo   => { name            => 1 },
-                serviceInfos  => { serviceInfo     => 1 },
-                serviceList   => { serviceInfos    => 1 },
+                serviceDetail           => { businessService => 1 },
+                serviceInfo             => { name            => 1 },
+                serviceInfos            => { serviceInfo     => 1 },
+                serviceList             => { serviceInfos    => 1 },
                 set_publisherAssertions =>
                   { authInfo => 1, publisherAssertion => 1 },
                 sharedRelationships => { keyedReference => 1 },
@@ -354,9 +358,9 @@ BEGIN {
                 tModelInfo            => { name               => 1 },
                 tModelInfos           => { tModelInfo         => 1 },
                 tModelInstanceDetails => { tModelInstanceInfo => 1 },
-                tModelInstanceInfo =>
+                tModelInstanceInfo    =>
                   { description => 1, instanceDetails => 1 },
-                tModelList => { tModelInfos => 1 },
+                tModelList      => { tModelInfos => 1 },
                 validate_values =>
                   { businessEntity => 1, businessService => 1, tModel => 1 }
             },
@@ -367,18 +371,19 @@ BEGIN {
                 addressLine => { keyName => 2, keyValue => 2 },
                 assertionStatusItem => { completionStatus => 2 },
                 assertionStatusReport => { generic => 2, operator => 2 },
-                authToken => { generic => 2, operator => 2 },
+                authToken     => { generic => 2, operator => 2 },
                 bindingDetail =>
                   { generic => 2, operator => 2, truncated => 2 },
                 bindingTemplate => { bindingKey => 2, serviceKey => 2 },
-                businessDetail =>
+                businessDetail  =>
                   { generic => 2, operator => 2, truncated => 2 },
                 businessDetailExt =>
                   { generic => 2, operator => 2, truncated => 2 },
                 businessEntity =>
                   { authorizedName => 2, businessKey => 2, operator => 2 },
                 businessInfo => { businessKey => 2 },
-                businessList => { generic => 2, operator => 2, truncated => 2 },
+                businessList =>
+                  { generic => 2, operator => 2, truncated => 2 },
                 businessService => { businessKey => 2, serviceKey => 2 },
                 contact         => { useType     => 2 },
                 delete_binding  => { generic     => 2 },
@@ -389,14 +394,15 @@ BEGIN {
                 description                => { lang    => 2 },
                 discard_authToken          => { generic => 2 },
                 discoveryURL               => { useType => 2 },
-                dispositionReport =>
+                dispositionReport          =>
                   { generic => 2, operator => 2, truncated => 2 },
                 email        => { useType => 2 },
                 errInfo      => { errCode => 2 },
-                find_binding => { generic => 2, maxRows => 2, serviceKey => 2 },
+                find_binding =>
+                  { generic => 2, maxRows => 2, serviceKey => 2 },
                 find_business          => { generic => 2, maxRows => 2 },
                 find_relatedBusinesses => { generic => 2, maxRows => 2 },
-                find_service =>
+                find_service           =>
                   { businessKey => 2, generic => 2, maxRows => 2 },
                 find_tModel               => { generic => 2, maxRows => 2 },
                 get_assertionStatusReport => { generic => 2 },
@@ -409,10 +415,10 @@ BEGIN {
                 get_serviceDetail       => { generic    => 2 },
                 get_tModelDetail        => { generic    => 2 },
                 hostingRedirector       => { bindingKey => 2 },
-                keyedReference =>
+                keyedReference          =>
                   { keyName => 2, keyValue => 2, tModelKey => 2 },
-                name  => { lang    => 2 },
-                phone => { useType => 2 },
+                name                => { lang    => 2 },
+                phone               => { useType => 2 },
                 publisherAssertions =>
                   { authorizedName => 2, generic => 2, operator => 2 },
                 registeredInfo =>
@@ -427,12 +433,14 @@ BEGIN {
                 serviceDetail =>
                   { generic => 2, operator => 2, truncated => 2 },
                 serviceInfo => { businessKey => 2, serviceKey => 2 },
-                serviceList => { generic => 2, operator => 2, truncated => 2 },
+                serviceList =>
+                  { generic => 2, operator => 2, truncated => 2 },
                 set_publisherAssertions => { generic   => 2 },
                 sharedRelationships     => { direction => 2 },
-                tModel =>
+                tModel                  =>
                   { authorizedName => 2, operator => 2, tModelKey => 2 },
-                tModelDetail => { generic => 2, operator => 2, truncated => 2 },
+                tModelDetail =>
+                  { generic => 2, operator => 2, truncated => 2 },
                 tModelInfo         => { tModelKey => 2 },
                 tModelInstanceInfo => { tModelKey => 2 },
                 tModelList => { generic => 2, operator => 2, truncated => 2 },
@@ -457,7 +465,8 @@ BEGIN {
                 },
                 assertionStatusReport => { assertionStatusItem => 1 },
                 authToken             => { authInfo            => 1 },
-                bindingDetail => { bindingTemplate => 1, listDescription => 1 },
+                bindingDetail         =>
+                  { bindingTemplate => 1, listDescription => 1 },
                 bindingTemplate => {
                     accessPoint           => 1,
                     categoryBag           => 1,
@@ -556,13 +565,13 @@ BEGIN {
                 },
                 get_assertionStatusReport =>
                   { authInfo => 1, completionStatus => 1 },
-                get_bindingDetail       => { authInfo => 1, bindingKey  => 1 },
-                get_businessDetail      => { authInfo => 1, businessKey => 1 },
-                get_operationalInfo     => { authInfo => 1, entityKey   => 1 },
+                get_bindingDetail   => { authInfo => 1, bindingKey  => 1 },
+                get_businessDetail  => { authInfo => 1, businessKey => 1 },
+                get_operationalInfo => { authInfo => 1, entityKey   => 1 },
                 get_publisherAssertions => { authInfo => 1 },
                 get_registeredInfo      => { authInfo => 1 },
-                get_serviceDetail       => { authInfo => 1, serviceKey  => 1 },
-                get_tModelDetail        => { authInfo => 1, tModelKey   => 1 },
+                get_serviceDetail       => { authInfo => 1, serviceKey => 1 },
+                get_tModelDetail        => { authInfo => 1, tModelKey => 1 },
                 identifierBag   => { keyedReference => 1 },
                 instanceDetails => {
                     description   => 1,
@@ -582,7 +591,7 @@ BEGIN {
                     nodeID                    => 1
                 },
                 operationalInfos => { operationalInfo => 1 },
-                overviewDoc =>
+                overviewDoc      =>
                   { description => 1, overviewURL => 1, overviewURL => 1 },
                 publisherAssertion => {
                     Signature      => 1,
@@ -604,11 +613,11 @@ BEGIN {
                     listDescription      => 1,
                     relatedBusinessInfos => 1
                 },
-                result        => { errInfo         => 1 },
-                save_binding  => { authInfo        => 1, bindingTemplate => 1 },
-                save_business => { authInfo        => 1, businessEntity => 1 },
-                save_service  => { authInfo        => 1, businessService => 1 },
-                save_tModel   => { authInfo        => 1, tModel => 1 },
+                result        => { errInfo  => 1 },
+                save_binding  => { authInfo => 1, bindingTemplate => 1 },
+                save_business => { authInfo => 1, businessEntity => 1 },
+                save_service  => { authInfo => 1, businessService => 1 },
+                save_tModel   => { authInfo => 1, tModel => 1 },
                 serviceDetail => { businessService => 1 },
                 serviceInfo   => { name            => 1 },
                 serviceInfos  => { serviceInfo     => 1 },
@@ -625,18 +634,18 @@ BEGIN {
                     name          => 1,
                     overviewDoc   => 1
                 },
-                tModelBag             => { tModelKey          => 1 },
-                tModelDetail          => { tModel             => 1 },
-                tModelInfo            => { description        => 1, name => 1 },
-                tModelInfos           => { tModelInfo         => 1 },
+                tModelBag    => { tModelKey   => 1 },
+                tModelDetail => { tModel      => 1 },
+                tModelInfo   => { description => 1, name => 1 },
+                tModelInfos  => { tModelInfo  => 1 },
                 tModelInstanceDetails => { tModelInstanceInfo => 1 },
-                tModelInstanceInfo =>
+                tModelInstanceInfo    =>
                   { description => 1, instanceDetails => 1 },
                 tModelList => { listDescription => 1, tModelInfos => 1 }
             },
             ATTRIBUTES => {
                 accessPoint => { useType => 2 },
-                address =>
+                address     =>
                   { sortCode => 2, tModelKey => 2, useType => 2, lang => 2 },
                 addressLine => { keyName => 2, keyValue => 2 },
                 assertionStatusItem => { completionStatus => 2 },
@@ -653,37 +662,37 @@ BEGIN {
                 dispositionReport => { truncated   => 2 },
                 email             => { useType     => 2 },
                 errInfo           => { errCode     => 2 },
-                find_binding =>
+                find_binding      =>
                   { listHead => 2, maxRows => 2, serviceKey => 2 },
                 find_business          => { listHead => 2, maxRows => 2 },
                 find_relatedBusinesses => { listHead => 2, maxRows => 2 },
-                find_service =>
+                find_service           =>
                   { businessKey => 2, listHead => 2, maxRows => 2 },
                 find_tModel        => { listHead      => 2, maxRows => 2 },
                 get_authToken      => { cred          => 2, userID  => 2 },
                 get_registeredInfo => { infoSelection => 2 },
                 hostingRedirector  => { bindingKey    => 2 },
-                keyedReference =>
+                keyedReference     =>
                   { keyName => 2, keyValue => 2, tModelKey => 2 },
-                keyedReferenceGroup   => { tModelKey   => 2 },
-                name                  => { lang        => 2 },
-                operationalInfo       => { entityKey   => 2 },
-                operationalInfos      => { truncated   => 2 },
-                overviewURL           => { useType     => 2 },
-                personName            => { lang        => 2 },
-                phone                 => { useType     => 2 },
-                registeredInfo        => { truncated   => 2 },
-                relatedBusinessesList => { truncated   => 2 },
-                result                => { errno       => 2, keyType => 2 },
-                serviceDetail         => { truncated   => 2 },
-                serviceInfo           => { businessKey => 2, serviceKey => 2 },
-                serviceList           => { truncated   => 2 },
-                sharedRelationships   => { direction   => 2 },
-                tModel                => { deleted     => 2, tModelKey => 2 },
-                tModelDetail          => { truncated   => 2 },
-                tModelInfo            => { tModelKey   => 2 },
-                tModelInstanceInfo    => { tModelKey   => 2 },
-                tModelList            => { truncated   => 2 }
+                keyedReferenceGroup   => { tModelKey => 2 },
+                name                  => { lang      => 2 },
+                operationalInfo       => { entityKey => 2 },
+                operationalInfos      => { truncated => 2 },
+                overviewURL           => { useType   => 2 },
+                personName            => { lang      => 2 },
+                phone                 => { useType   => 2 },
+                registeredInfo        => { truncated => 2 },
+                relatedBusinessesList => { truncated => 2 },
+                result                => { errno     => 2, keyType => 2 },
+                serviceDetail         => { truncated => 2 },
+                serviceInfo         => { businessKey => 2, serviceKey => 2 },
+                serviceList         => { truncated   => 2 },
+                sharedRelationships => { direction   => 2 },
+                tModel             => { deleted   => 2, tModelKey => 2 },
+                tModelDetail       => { truncated => 2 },
+                tModelInfo         => { tModelKey => 2 },
+                tModelInstanceInfo => { tModelKey => 2 },
+                tModelList         => { truncated => 2 }
             },
             WITHNAMES => [
                 qw/accessPoint actualCount address addressLine assertionStatusItem assertionStatusReport authToken authorizedName bindingDetail bindingKey bindingTemplate bindingTemplates businessDetail businessEntity businessInfo businessInfos businessKey businessList businessService businessServices categoryBag completionStatus contact contacts created description discoveryURL discoveryURLs dispositionReport email entityKey errInfo findQualifier findQualifiers fromKey hostingRedirector identifierBag includeCount infoSelection instanceDetails instanceParms keyedReference keyedReferenceGroup keysOwned listDescription listHead modified modifiedIncludingChildren name nodeID operationalInfo operationalInfos overviewDoc overviewURL personName phone publisherAssertion publisherAssertions registeredInfo relatedBusinessInfo relatedBusinessInfos relatedBusinessesList result serviceDetail serviceInfo serviceInfos serviceKey serviceList sharedRelationships tModel tModelBag tModelDetail tModelInfo tModelInfos tModelInstanceDetails tModelInstanceInfo tModelKey tModelList toKey/
@@ -701,17 +710,19 @@ our $VERSION = 0.712;
 use vars qw(@ISA);
 @ISA = qw(SOAP::SOM);
 
-sub result {    # result should point to immediate child of Body
+sub result
+{    # result should point to immediate child of Body
     my $self   = shift;
     my $result = '/Envelope/Body/[1]';
     ref $self or return $result;
-    defined $self->fault ? undef : $self->valueof($result);
+    defined $self->fault ? undef: $self->valueof($result);
 }
 
 # ======================================================================
 
 package UDDI::Data;
 our $VERSION = 0.712;
+
 
 use Carp ();
 
@@ -720,7 +731,8 @@ use vars qw(@ISA $AUTOLOAD);
 
 use overload fallback => 1, '""' => sub { shift->SUPER::value };
 
-sub _init {
+sub _init
+{
     use vars qw(@EXPORT_OK %EXPORT_TAGS);
     @EXPORT_OK   = ( with => @$UDDI::Constants::WITHNAMES );
     %EXPORT_TAGS = ( all  => [@EXPORT_OK] );
@@ -730,27 +742,30 @@ sub _init {
     $attributes = $UDDI::Constants::ATTRIBUTES;
 }
 
-sub new {
-    my $self = shift;
+sub new
+{
+    my $self  = shift;
     my $class = ref($self) || $self;
 
-    unless ( ref $self ) {
+    unless ( ref $self )
+    {
         $self = $class->SUPER::new( @_, type => 'uddi' );
     }
     return $self;
 }
 
-sub with {
+sub with
+{
     my $self = shift;
     $self =
       (      __PACKAGE__->can($self)
           || Carp::croak "Don't know what to do with '$self'" )->()
-      unless ref $self
-          && UNIVERSAL::isa( $self => __PACKAGE__ );
+      unless ref $self && UNIVERSAL::isa( $self => __PACKAGE__ );
 
     my $name = $self->SUPER::name;
     my @values;
-    while (@_) {
+    while (@_)
+    {
         my $data = shift;
         my ( $method, $attr, @value ) =
           UNIVERSAL::isa( $data => __PACKAGE__ )
@@ -773,7 +788,8 @@ sub with {
     $self->set_value( [@values] );
 }
 
-sub _compileit {
+sub _compileit
+{
     no strict 'refs';
     my $method = shift;
     *$method = sub {
@@ -786,7 +802,8 @@ sub _compileit {
           if !ref $_[0] && exists $elements->{$method};
 
         # MAKE ELEMENT: name( [{attr => value},] 'old')
-        if ( !UNIVERSAL::isa( $_[0] => __PACKAGE__ ) ) {
+        if ( !UNIVERSAL::isa( $_[0] => __PACKAGE__ ) )
+        {
 
             # get optional list of attributes as a first parameter
             my $attr = ref $_[0] eq 'HASH' ? shift @_ : {};
@@ -795,7 +812,8 @@ sub _compileit {
 
         my $name = $_[0]->SUPER::name;
 
-        if ( defined $name ) {
+        if ( defined $name )
+        {
 
             # GET/SET ATTRIBUTE: businessInfo->businessKey
             return @_ > 1
@@ -803,7 +821,7 @@ sub _compileit {
               : __PACKAGE__->SUPER::name(
                 $method => $_[0]->attr->{$method} )                # GET
               if exists $attributes->{$name}
-                  && exists $attributes->{$name}{$method};
+              && exists $attributes->{$name}{$method};
 
             # GET ELEMENT: businessInfos->businessInfo
             my @elems = grep {
@@ -813,28 +831,31 @@ sub _compileit {
             } map { ref $_ eq 'ARRAY' ? @$_ : $_ } $_[0]->value;
             return wantarray ? @elems : $elems[0]
               if exists $elements->{$name}
-                  && exists $elements->{$name}{$method};
+              && exists $elements->{$name}{$method};
 
             # MAKE ELEMENT: businessInfos(businessInfo('something'))
             return __PACKAGE__->SUPER::name( $method => @_ )
               if exists $elements->{$method}
-                  && exists $elements->{$method}{$name};
+              && exists $elements->{$method}{$name};
         }
 
         # handle UDDI::Data->method() calls for those SOAP::Data methods
         #  that conflict with UDDI methods, like name()
-        if ( UNIVERSAL::can( $ISA[0] => $method ) ) {
+        if ( UNIVERSAL::can( $ISA[0] => $method ) )
+        {
             my $pkg = shift @_;
             return eval "\$pkg->SUPER::$method(\@_)";
         }
 
-        Carp::croak "Don't know what to do with '$method' and '$name' elements";
+        Carp::croak
+          "Don't know what to do with '$method' and '$name' elements";
       }
 }
 
 sub BEGIN { _compileit('name') }
 
-sub AUTOLOAD {
+sub AUTOLOAD
+{
     my $method = substr( $AUTOLOAD, rindex( $AUTOLOAD, '::' ) + 2 );
     return if $method eq 'DESTROY';
 
@@ -850,11 +871,13 @@ our $VERSION = 0.712;
 use vars qw(@ISA);
 @ISA = qw(SOAP::Serializer);
 
-sub new {
-    my $self = shift;
+sub new
+{
+    my $self  = shift;
     my $class = ref($self) || $self;
 
-    unless ( ref $self ) {
+    unless ( ref $self )
+    {
         $self = $class->SUPER::new(
             attr       => {},
             namespaces => {
@@ -872,7 +895,8 @@ sub new {
 use overload;    # protect from stringification in UDDI::Data
 sub gen_id { overload::StrVal( $_[1] ) =~ /\((0x\w+)\)/o; $1 }
 
-sub as_uddi {
+sub as_uddi
+{
     my $self = shift;
     my ( $value, $name, $type, $attr ) = @_;
     return $self->encode_array( $value, $name, undef, $attr )
@@ -888,7 +912,8 @@ sub as_uddi {
     ];
 }
 
-sub encode_array {
+sub encode_array
+{
     my $self    = shift;
     my $encoded = $self->SUPER::encode_array(@_);
     delete $encoded->[1]
@@ -904,7 +929,8 @@ our $VERSION = 0.712;
 use vars qw(@ISA);
 @ISA = qw(SOAP::Deserializer);
 
-sub decode_value {
+sub decode_value
+{
     my $self = shift;
     my $ref  = shift;
     my ( $name, $attrs, $children, $value ) = @$ref;
@@ -912,17 +938,17 @@ sub decode_value {
     # base class knows what to do with elements in SOAP namespace
     return $self->SUPER::decode_value($ref)
       if exists $attrs->{href}
-          || ( SOAP::Utils::splitlongname($name) )[0] eq
-          $SOAP::Constants::NS_ENV;
+      || ( SOAP::Utils::splitlongname($name) )[0] eq $SOAP::Constants::NS_ENV;
 
-    UDDI::Data->SOAP::Data::name($name)->attr($attrs)->set_value(
-        ref $children && @$children
+    UDDI::Data->SOAP::Data::name($name)->attr($attrs)
+      ->set_value( ref $children
+          && @$children
         ? map( scalar( ( $self->decode_object($_) )[1] ), @$children )
-        : $value
-    );
+        : $value );
 }
 
-sub deserialize {
+sub deserialize
+{
     bless shift->SUPER::deserialize(@_) => 'UDDI::SOM';
 }
 
@@ -936,7 +962,8 @@ use Exporter;
 use Carp ();
 @ISA = qw(SOAP::Lite Exporter);
 
-BEGIN {    # handle exports
+BEGIN
+{    # handle exports
     %EXPORT_TAGS = (
         'delete' => [
             qw/delete_binding delete_business delete_service
@@ -977,15 +1004,17 @@ BEGIN {    # handle exports
 
 my $uddiversion;
 
-sub uddiversion {
-    my $self = shift;
+sub uddiversion
+{
+    my $self    = shift;
     my $version = shift or return $uddiversion;
 
     die qq!Wrong UDDI version. Supported versions: @{[
         join ", ", keys %UDDI::Constants::UDDI_VERSIONS]}\n!
       unless defined $UDDI::Constants::UDDI_VERSIONS{$version};
 
-    foreach ( keys %{ $UDDI::Constants::UDDI_VERSIONS{$version} } ) {
+    foreach ( keys %{ $UDDI::Constants::UDDI_VERSIONS{$version} } )
+    {
         eval
 "\$UDDI::Constants::$_ = \$UDDI::Constants::UDDI_VERSIONS{$version}->{$_}"
           or die;
@@ -999,11 +1028,13 @@ sub uddiversion {
 
 BEGIN { UDDI::Lite->uddiversion(1) }
 
-sub new {
-    my $self = shift;
+sub new
+{
+    my $self  = shift;
     my $class = ref($self) || $self;
 
-    unless ( ref $self ) {
+    unless ( ref $self )
+    {
         $self = $class->SUPER::new(
             on_action  => sub { '""' },
             serializer => UDDI::Serializer->new, # register UDDI Serializer
@@ -1014,7 +1045,8 @@ sub new {
     return $self;
 }
 
-sub AUTOLOAD {
+sub AUTOLOAD
+{
     my $method = substr( $AUTOLOAD, rindex( $AUTOLOAD, '::' ) + 2 );
     return if $method eq 'DESTROY';
 
@@ -1031,13 +1063,15 @@ sub AUTOLOAD {
     goto &$AUTOLOAD;
 }
 
-sub call {
+sub call
+{
     SOAP::Trace::trace('()');
     my $self   = shift;
     my $method = shift;
     my @parameters;
     my $attr = ref $_[0] eq 'HASH' ? shift() : {};
-    while (@_) {
+    while (@_)
+    {
         push( @parameters,
             UNIVERSAL::isa( $_[0] => 'UDDI::Data' )
             ? shift
@@ -1068,7 +1102,8 @@ sub call {
 
     return $respond if $self->outputxml;
 
-    unless ( $self->transport->is_success ) {
+    unless ( $self->transport->is_success )
+    {
         my $result = eval { $self->deserializer->deserialize($respond) }
           if $respond;
         return $self->on_fault->( $self, $@ ? $respond : $result ) || $result;

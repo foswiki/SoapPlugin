@@ -15,9 +15,9 @@ package Foswiki::Plugins::SoapPlugin;
 use strict;
 use Foswiki::Func ();
 
-our $VERSION           = '$Rev$';
-our $RELEASE           = '2.00';
-our $SHORTDESCRIPTION  = 'SOAP for Foswiki';
+our $VERSION = '$Rev$';
+our $RELEASE = '2.00';
+our $SHORTDESCRIPTION = 'SOAP for Foswiki';
 our $NO_PREFS_IN_TOPIC = 1;
 
 our $core;
@@ -25,35 +25,29 @@ our $core;
 ###############################################################################
 sub initPlugin {
 
-    Foswiki::Func::registerTagHandler(
-        'SOAP',
-        sub {
-            my $session = shift;
-            return getCore($session)->handleSOAP(@_);
-        }
-    );
+  Foswiki::Func::registerTagHandler('SOAP', sub {
+    my $session = shift;
+    return getCore($session)->handleSOAP(@_);
+  });
 
-    Foswiki::Func::registerTagHandler(
-        'SOAPFORMAT',
-        sub {
-            my $session = shift;
-            return getCore($session)->handleSOAPFORMAT(@_);
-        }
-    );
+  Foswiki::Func::registerTagHandler('SOAPFORMAT', sub {
+    my $session = shift;
+    return getCore($session)->handleSOAPFORMAT(@_);
+  });
 
-    $core = undef;
-    return 1;
+  $core = undef;
+  return 1;
 }
 
 ###############################################################################
 sub getCore {
 
-    unless ($core) {
-        require Foswiki::Plugins::SoapPlugin::Core;
-        $core = new Foswiki::Plugins::SoapPlugin::Core(@_);
-    }
+  unless ($core) {
+    require Foswiki::Plugins::SoapPlugin::Core;
+    $core = new Foswiki::Plugins::SoapPlugin::Core(@_);
+  }
 
-    return $core;
+  return $core;
 }
 
 1;

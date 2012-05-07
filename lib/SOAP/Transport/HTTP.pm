@@ -49,8 +49,7 @@ sub patch {
         my $collect = \&collect;    # store original
         *collect = sub {
             if ( defined $_[2]->header('Connection')
-                && $_[2]->header('Connection') eq 'Keep-Alive' )
-            {
+                && $_[2]->header('Connection') eq 'Keep-Alive' ) {
                 my $data = $_[3]->();
                 my $next =
                   SOAP::Utils::bytelength($$data) ==
@@ -149,7 +148,7 @@ sub send_receive {
 
     # TODO - add application/dime
     $http_request->header(
-        Accept => [ 'text/xml', 'multipart/*', 'application/soap' ] );
+        Accept => ['text/xml', 'multipart/*', 'application/soap'] );
     $http_request->method($method);
     $http_request->url($endpoint);
 
@@ -157,7 +156,7 @@ sub send_receive {
     if ($parts) {
         my $packager = $context->packager;
         $envelope = $packager->package( $envelope, $context );
-        for my $hname ( keys %{ $packager->headers_http } ) {
+        for my $hname ( keys %{$packager->headers_http} ) {
             $http_request->headers->header(
                 $hname => $packager->headers_http->{$hname} );
         }
@@ -183,20 +182,20 @@ sub send_receive {
             # check cache for M-POST
             $method = 'M-POST' if exists $mpost{$endpoint};
 
-            # what's this all about?
-            # unfortunately combination of LWP and Perl 5.6.1 and later has bug
-            # in sending multibyte characters. LWP uses length() to calculate
-            # content-length header and starting 5.6.1 length() calculates chars
-            # instead of bytes. 'use bytes' in THIS file doesn't work, because
-            # it's lexically scoped. Unfortunately, content-length we calculate
-            # here doesn't work either, because LWP overwrites it with
-            # content-length it calculates (which is wrong) AND uses length()
-            # during syswrite/sysread, so we are in a bad shape anyway.
-            #
-            # what to do? we calculate proper content-length (using
-            # bytelength() function from SOAP::Utils) and then drop utf8 mark
-            # from string (doing pack with 'C0A*' modifier) if length and
-            # bytelength are not the same
+          # what's this all about?
+          # unfortunately combination of LWP and Perl 5.6.1 and later has bug
+          # in sending multibyte characters. LWP uses length() to calculate
+          # content-length header and starting 5.6.1 length() calculates chars
+          # instead of bytes. 'use bytes' in THIS file doesn't work, because
+          # it's lexically scoped. Unfortunately, content-length we calculate
+          # here doesn't work either, because LWP overwrites it with
+          # content-length it calculates (which is wrong) AND uses length()
+          # during syswrite/sysread, so we are in a bad shape anyway.
+          #
+          # what to do? we calculate proper content-length (using
+          # bytelength() function from SOAP::Utils) and then drop utf8 mark
+          # from string (doing pack with 'C0A*' modifier) if length and
+          # bytelength are not the same
             my $bytelength = SOAP::Utils::bytelength($envelope);
             $envelope = pack( 'C0A*', $envelope )
               if !$SOAP::Constants::DO_NOT_USE_LWP_LENGTH_HACK
@@ -225,9 +224,9 @@ sub send_receive {
             #            $http_request->header(Expect => '100-Continue');
 
             # allow compress if present and let server know we could handle it
-            $http_request->header(
-                'Accept-Encoding' => [$SOAP::Transport::HTTP::Client::COMPRESS]
-            ) if $self->options->{is_compress};
+            $http_request->header( 'Accept-Encoding' =>
+                  [$SOAP::Transport::HTTP::Client::COMPRESS] )
+              if $self->options->{is_compress};
 
             $http_request->content_encoding(
                 $SOAP::Transport::HTTP::Client::COMPRESS)
@@ -239,13 +238,12 @@ sub send_receive {
                     $SOAP::Constants::DEFAULT_HTTP_CONTENT_TYPE,
                     !$SOAP::Constants::DO_NOT_USE_CHARSET && $encoding
                     ? 'charset=' . lc($encoding)
-                    : ()
-                );
+                    : () );
             }
             elsif ( !$SOAP::Constants::DO_NOT_USE_CHARSET && $encoding ) {
                 my $tmpType = $http_request->headers->header('Content-type');
 
-           # $http_request->content_type($tmpType.'; charset=' . lc($encoding));
+                # $http_request->content_type($tmpType.'; charset=' . lc($encoding));
                 my $addition = '; charset=' . lc($encoding);
                 $http_request->content_type( $tmpType . $addition )
                   if ( $tmpType !~ /$addition/ );
@@ -264,14 +262,12 @@ sub send_receive {
             SOAP::Trace::debug( $self->http_response->as_string );
 
             # 100 OK, continue to read?
-            if (
-                (
+            if ( (
                        $self->http_response->code == 510
                     || $self->http_response->code == 501
                 )
                 && $method ne 'M-POST'
-              )
-            {
+              ) {
                 $mpost{$endpoint} = 1;
             }
             elsif ( $self->http_response->code == 415 && $compressed ) {
@@ -310,8 +306,7 @@ sub send_receive {
 "Can't understand returned Content-Encoding (@{[$self->http_response->content_encoding]})\n"
       : $self->http_response->content;
 
-    $content =
-      $self->http_response->content_type =~ m!^multipart/!i
+    $content = $self->http_response->content_type =~ m!^multipart/!i
       ? join( "\n", $self->http_response->headers_as_string, $content )
       : $content;
 
@@ -383,14 +378,14 @@ sub handle {
             HTTP::Response->new(
                 510,    # NOT EXTENDED
 "Expected Mandatory header with $SOAP::Constants::NS_ENV as unique URI"
-            )
-          )
+            ) )
           if $self->request->header('Man') !~
               /^"$SOAP::Constants::NS_ENV";\s*ns\s*=\s*(\d+)/;
         $self->action( $self->request->header("$1-SOAPAction") || undef );
     }
     else {
-        return $self->response( HTTP::Response->new(405) )  # METHOD NOT ALLOWED
+        return $self->response(
+            HTTP::Response->new(405) )    # METHOD NOT ALLOWED
     }
 
     my $compressed =
@@ -400,15 +395,17 @@ sub handle {
 
     # signal error if content-encoding is 'deflate', but we don't want it OR
     # something else, so we don't understand it
-    return $self->response( HTTP::Response->new(415) )  # UNSUPPORTED MEDIA TYPE
+    return $self->response(
+        HTTP::Response->new(415) )        # UNSUPPORTED MEDIA TYPE
       if $compressed && !$self->options->{is_compress}
-          || !$compressed && ( $self->request->content_encoding || '' ) =~ /\S/;
+          || !$compressed
+          && ( $self->request->content_encoding || '' ) =~ /\S/;
 
     my $content_type = $self->request->content_type || '';
 
-  # in some environments (PerlEx?) content_type could be empty, so allow it also
-  # anyway it'll blow up inside ::Server::handle if something wrong with message
-  # TBD: but what to do with MIME encoded messages in THOSE environments?
+# in some environments (PerlEx?) content_type could be empty, so allow it also
+# anyway it'll blow up inside ::Server::handle if something wrong with message
+# TBD: but what to do with MIME encoded messages in THOSE environments?
     return $self->make_fault( $SOAP::Constants::FAULT_CLIENT,
             "Content-Type must be 'text/xml,' 'multipart/*,' "
           . "'application/soap+xml,' 'or 'application/dime' instead of '$content_type'"
@@ -422,8 +419,7 @@ sub handle {
 
     # TODO - Handle the Expect: 100-Continue HTTP/1.1 Header
     if ( defined( $self->request->header("Expect") )
-        && ( $self->request->header("Expect") eq "100-Continue" ) )
-    {
+        && ( $self->request->header("Expect") eq "100-Continue" ) ) {
 
     }
 
@@ -448,7 +444,8 @@ sub handle {
 sub make_fault {
     my $self = shift;
     $self->make_response(
-        $SOAP::Constants::HTTP_ON_FAULT_CODE => $self->SUPER::make_fault(@_) );
+        $SOAP::Constants::HTTP_ON_FAULT_CODE => $self->SUPER::make_fault(@_)
+    );
     return;
 }
 
@@ -465,9 +462,9 @@ sub make_response {
       exists $self->options->{compress_threshold}
       && eval { require Compress::Zlib };
 
-    my $compressed =
-         $self->options->{is_compress}
-      && grep( /\b($COMPRESS|\*)\b/, $self->request->header('Accept-Encoding') )
+    my $compressed = $self->options->{is_compress}
+      && grep( /\b($COMPRESS|\*)\b/,
+        $self->request->header('Accept-Encoding') )
       && ( $self->options->{compress_threshold} || 0 ) <
       SOAP::Utils::bytelength $response;
 
@@ -493,8 +490,7 @@ sub make_response {
             ( $] > 5.007 )
             ? do { require Encode; Encode::encode( $encoding, $response ) }
             : $response,
-        )
-    );
+        ) );
 
     $self->response->headers->header( 'Content-Type' =>
 'Multipart/Related; type="text/xml"; start="<main_envelope>"; boundary="'
@@ -540,10 +536,9 @@ sub handle {
 
     # if the HTTP_TRANSFER_ENCODING env is defined, set $chunked true
     # else to false
-    my $chunked =
-      ( defined $ENV{'HTTP_TRANSFER_ENCODING'}
-          && $ENV{'HTTP_TRANSFER_ENCODING'} =~ /^chunked.*$/ )
-      || 0;
+    my $chunked = (defined $ENV{'HTTP_TRANSFER_ENCODING'}
+        && $ENV{'HTTP_TRANSFER_ENCODING'} =~ /^chunked.*$/) || 0;
+
 
     my $content = q{};
 
@@ -560,9 +555,8 @@ sub handle {
         $self->response( HTTP::Response->new(411) )    # LENGTH REQUIRED
     }
     elsif ( defined $SOAP::Constants::MAX_CONTENT_SIZE
-        && $length > $SOAP::Constants::MAX_CONTENT_SIZE )
-    {
-        $self->response( HTTP::Response->new(413) )   # REQUEST ENTITY TOO LARGE
+        && $length > $SOAP::Constants::MAX_CONTENT_SIZE ) {
+        $self->response( HTTP::Response->new(413) ) # REQUEST ENTITY TOO LARGE
     }
     else {
         if ( exists $ENV{EXPECT} && $ENV{EXPECT} =~ /\b100-Continue\b/i ) {
@@ -583,8 +577,7 @@ sub handle {
             HTTP::Request->new(
                 $ENV{'REQUEST_METHOD'} || '' => $ENV{'SCRIPT_NAME'},
                 HTTP::Headers->new(
-                    map {
-                        (
+                    map { (
                               /^HTTP_(.+)/i
                             ? ( $1 =~ m/SOAPACTION/ )
                                   ? ('SOAPAction')
@@ -594,8 +587,7 @@ sub handle {
                       } keys %ENV
                 ),
                 $content,
-            )
-        );
+            ) );
         $self->SUPER::handle;
     }
 
@@ -728,8 +720,7 @@ sub new {
 
     # mod_perl 2.0
     if ( defined $ENV{MOD_PERL_API_VERSION}
-        && $ENV{MOD_PERL_API_VERSION} >= 2 )
-    {
+        && $ENV{MOD_PERL_API_VERSION} >= 2 ) {
         require Apache2::RequestRec;
         require Apache2::RequestIO;
         require Apache2::Const;
@@ -811,8 +802,7 @@ sub handler {
             $r->method() => $r->uri,
             HTTP::Headers->new( $r->headers_in ),
             $content
-        )
-    );
+        ) );
     $self->SUPER::handle;
 
     # we will specify status manually for Apache, because
@@ -821,16 +811,16 @@ sub handler {
     # which is not what we want.
     # will emulate normal response, but with custom status code
     # which could also be 500.
-    if ( $self->{'MOD_PERL_VERSION'} < 2 ) {
+    if ($self->{'MOD_PERL_VERSION'} < 2 ) {
         $r->status( $self->response->code );
     }
     else {
-        $r->status_line( $self->response->code );
+        $r->status_line($self->response->code);
     }
 
     # Begin JT Justman patch
     if ( $self->{'MOD_PERL_VERSION'} > 1 ) {
-        $self->response->headers->scan( sub { $r->headers_out->add(@_) } );
+        $self->response->headers->scan(sub { $r->headers_out->add(@_) });
         $r->content_type( join '; ', $self->response->content_type );
     }
     else {
@@ -849,7 +839,7 @@ sub configure {
     my $config = shift->dir_config;
     for (%$config) {
         $config->{$_} =~ /=>/
-          ? $self->$_( { split /\s*(?:=>|,)\s*/, $config->{$_} } )
+          ? $self->$_( {split /\s*(?:=>|,)\s*/, $config->{$_}} )
           : ref $self->$_() ? ()    # hm, nothing can be done here
           : $self->$_( split /\s+|\s*,\s*/, $config->{$_} )
           if $self->can($_);

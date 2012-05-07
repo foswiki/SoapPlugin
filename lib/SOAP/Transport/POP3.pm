@@ -14,8 +14,8 @@ use strict;
 
 our $VERSION = 0.711;
 
-use Net::POP3;
-use URI;
+use Net::POP3; 
+use URI; 
 
 # ======================================================================
 
@@ -32,46 +32,43 @@ sub new {
     return $class if ref $class;
 
     my $address = shift;
-    Carp::carp "URLs without 'pop://' scheme are deprecated. Still continue"
+    Carp::carp "URLs without 'pop://' scheme are deprecated. Still continue" 
       if $address =~ s!^(pop://)?!pop://!i && !$1;
     my $server = URI->new($address);
-    my $self   = $class->SUPER::new(@_);
-    $self->{_pop3server} = Net::POP3->new( $server->host_port )
-      or Carp::croak "Can't connect to '@{[$server->host_port]}': $!";
-    my $method =
-       !$server->auth || $server->auth eq '*' ? 'login'
-      : $server->auth eq '+APOP' ? 'apop'
-      :   Carp::croak "Unsupported authentication scheme '@{[$server->auth]}'";
+    my $self = $class->SUPER::new(@_);
+    $self->{_pop3server} = Net::POP3->new($server->host_port)
+        or Carp::croak "Can't connect to '@{[$server->host_port]}': $!";
+    my $method = ! $server->auth || $server->auth eq '*'
+        ? 'login'
+        : $server->auth eq '+APOP'
+            ? 'apop'
+            : Carp::croak "Unsupported authentication scheme '@{[$server->auth]}'";
     $self->{_pop3server}->$method( split m{:}, $server->user() )
-      or Carp::croak
-      "Can't authenticate to '@{[$server->host_port]}' with '$method' method"
-      if defined $server->user;
+        or Carp::croak "Can't authenticate to '@{[$server->host_port]}' with '$method' method"
+            if defined $server->user;
     return $self;
 }
 
 sub AUTOLOAD {
-    my $method = substr( $AUTOLOAD, rindex( $AUTOLOAD, '::' ) + 2 );
-    return if $method eq 'DESTROY';
+  my $method = substr($AUTOLOAD, rindex($AUTOLOAD, '::') + 2);
+  return if $method eq 'DESTROY';
 
-    no strict 'refs';
-    *$AUTOLOAD = sub { shift->{_pop3server}->$method(@_) };
-    goto &$AUTOLOAD;
+  no strict 'refs';
+  *$AUTOLOAD = sub { shift->{_pop3server}->$method(@_) };
+  goto &$AUTOLOAD;
 }
 
 sub handle {
-    my $self = shift->new;
-    my $messages = $self->list or return;
-
-    # fixes [ 1416700 ] POP3 Processes Messages Out of Order
-    foreach my $msgid ( sort { $a <=> $b } ( keys( %{$messages} ) ) ) {
-
-        # foreach my $msgid (keys %$messages) {
-        $self->SUPER::handle( join '', @{ $self->get($msgid) } );
-    }
-    continue {
-        $self->delete($msgid);
-    }
-    return scalar keys %$messages;
+  my $self = shift->new;
+  my $messages = $self->list or return;
+  # fixes [ 1416700 ] POP3 Processes Messages Out of Order
+  foreach my $msgid (sort { $a <=> $b } (keys(%{$messages}) ) ) {
+  # foreach my $msgid (keys %$messages) {
+    $self->SUPER::handle(join '', @{$self->get($msgid)});
+  } continue {
+    $self->delete($msgid);
+  }
+  return scalar keys %$messages;
 }
 
 sub make_fault { return }
