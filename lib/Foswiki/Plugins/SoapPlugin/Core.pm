@@ -1,6 +1,6 @@
 # Plugin for Foswiki - The Free and Open Source Wiki, http://foswiki.org/
 #
-# SoapPlugin is Copyright (C) 2010-2011 Michael Daum http://michaeldaumconsulting.com
+# SoapPlugin is Copyright (C) 2010-2012 Michael Daum http://michaeldaumconsulting.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -16,11 +16,14 @@
 package Foswiki::Plugins::SoapPlugin::Core;
 
 use strict;
+use warnings;
+
 use Foswiki::Plugins ();
+use Foswiki::Func ();
+use Encode ();;
 use Foswiki::Plugins::SoapPlugin::Client();
 
 use constant DEBUG => 0; # toggle me
-#use Data::Dumper ();
 
 ##############################################################################
 sub new {
@@ -65,24 +68,24 @@ sub handleSOAP {
   normalizeParams($params);
 
   my $client = $this->client($theClient);
-  return inlineError("unknown client '$theClient'") unless $client;
+  return inlineError("Error: unknown client '$theClient'") unless $client;
   
   my $method = $params->{method} || $client->{defaultMethod};
-  return inlineError("no method") unless $method;
+  return inlineError("Error: no method") unless $method;
 
   my ($som, $error) = $client->call($method, $params);
-  $error ||= '';
 
-  return inlineError("Error during SOAP call $error") unless $som;
+  return inlineError("Error: $error") if $error;
 
   my $theId = $params->{id};
   $this->{knownSoms}{$theId} = $som if $theId;
 
   return '' if defined $theId && 
-    !$params->{format} &&
-    !$params->{verbatim};
+    !defined($params->{format}) &&
+    !$params->{verbatim} &&
+    !$params->{xslt};
 
-  return formatResult($som, $params);
+  return formatResult($som, $params, $theWeb, $theTopic);
 }
 
 ###############################################################################
@@ -95,18 +98,18 @@ sub handleSOAPFORMAT {
   my $theId = $params->{_DEFAULT} || $params->{id};
 
   unless ($theId) {
-    return '' if $params->{warn} eq 'off';
+    return '' unless $params->{warn};
     return inlineError("Error: no id");
   }
 
   my $som = $this->{knownSoms}{$theId};
 
   unless ($som) {
-    return '' if $params->{warn} eq 'off';
+    return '' unless $params->{warn};
     return inlineError("Error: unknown som id '$theId'");
   }
 
-  return formatResult($som, $params);
+  return formatResult($som, $params, $theWeb, $theTopic);
 }
 
 
@@ -121,7 +124,7 @@ sub writeDebug {
 sub inlineError {
   my $msg = shift;
 
-  return "<span class='foswikiAlert'>Error: $msg </span>";
+  return "<span class='foswikiAlert'>$msg</span>";
 }
 
 ###############################################################################
@@ -161,13 +164,10 @@ sub normalizeParams {
   $params->{footer} ||= '';
   $params->{header} ||= '';
   $params->{separator} ||= '';
-  $params->{hidenull} ||= 'off';
-  $params->{hidenull}  = ($params->{hidenull} eq 'on')?1:0;
-  $params->{raw} ||= 'off';
-  $params->{raw}  = ($params->{raw} eq 'on')?1:0;
-  $params->{verbatim} ||= 'off';
-  $params->{verbatim}  = ($params->{verbatim} eq 'on')?1:0;
-  $params->{warn} ||= 'on';
+  $params->{hidenull} = Foswiki::Func::isTrue($params->{hidenull}, 0);
+  $params->{raw} = Foswiki::Func::isTrue($params->{raw}, 0);
+  $params->{verbatim} = Foswiki::Func::isTrue($params->{verbatim}, 0);
+  $params->{warn} = Foswiki::Func::isTrue($params->{warn}, 1);
  
   return $params;
 }
@@ -175,24 +175,59 @@ sub normalizeParams {
 ###############################################################################
 # static
 sub formatResult {
-  my ($som, $params) = @_;
+  my ($som, $params, $web, $topic) = @_;
 
   writeDebug("called formatResult");
   if ($params->{raw} || $params->{verbatim}) {
     my $content = $som->{_foswiki_content} || $som->context->transport->http_response->content;
     return $content if $params->{raw};
     $content = prettyPrint($content);
-    return '<verbatim>'.$content.'</verbatim>';
+    $content =~ s/</&lt;/g;
+    $content =~ s/>/&gt;/g;
+    return '<pre class="html">'.$content.'</pre>';
   }
 
   my $result = stringify($som, $params);
+
+  #print STDERR "1:$result=$result\n";
+
+  if (defined $params->{xslt}) {
+    my $xsltString = $params->{xslt};
+    $xsltString =~ s/\$perce?nt/\%/go;
+    $xsltString =~ s/\$nop\b//go;
+    $xsltString =~ s/\$n/\n/go;
+    $xsltString =~ s/\$dollar/\$/go;
+    $xsltString = Foswiki::Func::expandCommonVariables($xsltString, $topic, $web);
+
+    my $error;
+
+    eval {
+      require XML::LibXSLT;
+      require XML::LibXML;
+
+      my $xslt = XML::LibXSLT->new();
+      my $style_doc = XML::LibXML->load_xml(string=>$xsltString, no_cdata=>1);
+      my $stylesheet = $xslt->parse_stylesheet($style_doc);
+      my $source = XML::LibXML->load_xml(string=>$result);
+      $result = $stylesheet->transform($source);
+      #$result = toSiteCharSet($stylesheet->output_as_bytes($result)) if defined $result;
+      $result = $stylesheet->output_as_bytes($result) if defined $result;
+      $result ||= '';
+    };
+    
+    if ($@) {
+      $error = $@;
+    };
+
+    return inlineError("Error: ".$error) if defined $error;
+  }
 
   $result =~ s/\$perce?nt/\%/go;
   $result =~ s/\$nop\b//go;
   $result =~ s/\$n/\n/go;
   $result =~ s/\$dollar/\$/go;
 
-  #writeDebug("result=$result");
+  writeDebug("result=$result");
 
   return $result;
 }
@@ -219,6 +254,7 @@ sub stringify {
 
   my @lines = ();
 
+  #print STDERR "data=".Data::Dumper->Dump([$data])."\n";
 
   my $currentIndex = $params->{_index} || 1;
   foreach my $dataItem (@$data) {
@@ -282,35 +318,8 @@ sub fromUtf8 {
   my $string = shift;
 
   my $charset = $Foswiki::cfg{Site}{CharSet};
-  return $string if $charset =~ /^utf-?8$/i;
-
-  if ($] < 5.008) {
-
-    # use Unicode::MapUTF8 for Perl older than 5.8
-    require Unicode::MapUTF8;
-    if (Unicode::MapUTF8::utf8_supported_charset($charset)) {
-      return Unicode::MapUTF8::from_utf8({ -string => $string, -charset => $charset });
-    } else {
-      print STDERR "Warning: Conversion from $charset no supported, ' . 'or name not recognised - check perldoc Unicode::MapUTF8\n";
-      return $string;
-    }
-  } else {
-
-    # good Perl version, just use Encode
-    require Encode;
-    import Encode;
-    my $encoding = Encode::resolve_alias($charset);
-    if (not $encoding) {
-      print STDERR "Warning: Conversion to $charset not supported, or name not recognised - check 'perldoc Encode::Supported'\n";
-      return $string;
-    } else {
-
-      # converts to $charset, generating HTML NCR's when needed
-      my $octets = $string;
-      $octets = Encode::decode('utf-8', $string) unless utf8::is_utf8($string);
-      return Encode::encode($encoding, $octets, 0);#&Encode::FB_HTMLCREF());
-    }
-  }
+  my $octets = Encode::decode('utf-8', $string);
+  return Encode::encode($charset, $string);
 }
 
 ###############################################################################
@@ -319,33 +328,17 @@ sub toUtf8 {
   my $string = shift;
 
   my $charset = $Foswiki::cfg{Site}{CharSet};
-  return $string if $charset =~ /^utf-?8$/i;
 
-  if ($] < 5.008) {
+  my $octets = Encode::decode($charset, $string);
+  $octets = Encode::encode('utf-8', $octets);
+  return $octets;
 
-    # use Unicode::MapUTF8 for Perl older than 5.8
-    require Unicode::MapUTF8;
-    if (Unicode::MapUTF8::utf8_supported_charset($charset)) {
-      return Unicode::MapUTF8::to_utf8({ -string => $string, -charset => $charset });
-    } else {
-      print STDERR "Warning: Conversion from $charset no supported, or name not recognised - check 'perldoc Unicode::MapUTF8'\n";
-      return $string;
-    }
-  } else {
+}
 
-    # good Perl version, just use Encode
-    require Encode;
-    import Encode;
-    my $encoding = Encode::resolve_alias($charset);
-    if (not $encoding) {
-      print STDERR "Warning: Conversion to $charset not supported, or name not recognised - check 'perldoc Encode::Supported'\n";
-      return undef;
-    } else {
-      my $octets = Encode::decode($encoding, $string, &Encode::FB_PERLQQ());
-      $octets = Encode::encode('utf-8', $octets) unless utf8::is_utf8($octets);
-      return $octets;
-    }
-  }
+##############################################################################
+# static
+sub toSiteCharSet {
+  return Encode::encode($Foswiki::cfg{Site}{CharSet}, $_[0]);
 }
 1;
 

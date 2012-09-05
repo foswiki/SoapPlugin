@@ -4,7 +4,7 @@
 # SOAP::Lite is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Id: Lite.pm 353 2010-03-17 21:08:34Z kutterma $
+# $Id: Lite.pm 416 2012-07-15 09:35:17Z kutterma $
 #
 # ======================================================================
 
@@ -18,7 +18,7 @@ package SOAP::Lite;
 
 use 5.006; #weak references require perl 5.6
 use strict;
-our $VERSION = 0.711;
+our $VERSION = 0.715;
 # ======================================================================
 
 package SOAP::XMLSchemaApacheSOAP::Deserializer;
@@ -196,7 +196,7 @@ sub as_boolean {
     return [
         $name,
         {'xsi:type' => 'xsd:boolean', %$attr},
-        ( $value ne 'false' && $value ) ? 'true' : 'false'
+        ( $value && $value ne 'false' ) ? 'true' : 'false'
     ];
 }
 
@@ -304,7 +304,7 @@ sub as_boolean {
         {
             'xsi:type' => 'xsd:boolean', %$attr
         },
-        ( $value ne 'false' && $value )
+        ( $value && ($value ne 'false') )
             ? 'true'
             : 'false'
     ];
@@ -430,8 +430,10 @@ sub clone {
 package SOAP::Transport;
 
 use vars qw($AUTOLOAD @ISA);
-
 @ISA = qw(SOAP::Cloneable);
+
+use Class::Inspector;
+
 
 sub DESTROY { SOAP::Trace::objects('()') }
 
@@ -461,7 +463,7 @@ sub proxy {
     (my $protocol_class = "${class}::$protocol") =~ s/-/_/g;
 
     no strict 'refs';
-    unless (defined %{"$protocol_class\::Client::"}
+    unless (Class::Inspector->loaded("$protocol_class\::Client")
         && UNIVERSAL::can("$protocol_class\::Client" => 'new')
     ) {
         eval "require $protocol_class";
@@ -571,9 +573,10 @@ sub new {
 }
 
 sub name {
-    my $self = UNIVERSAL::isa($_[0] => __PACKAGE__) ? shift->new : __PACKAGE__->new;
+    my $self = ref $_[0] ? shift : UNIVERSAL::isa($_[0] => __PACKAGE__) ? shift->new : __PACKAGE__->new;
     if (@_) {
-        my ($name, $uri, $prefix) = shift;
+        my $name = shift;
+        my ($uri, $prefix);    # predeclare, because can't declare in assign
         if ($name) {
             ($uri, $name) = SOAP::Utils::splitlongname($name);
             unless (defined $uri) {
@@ -592,21 +595,25 @@ sub name {
 }
 
 sub attr {
-    my $self = UNIVERSAL::isa($_[0] => __PACKAGE__)
-        ? shift->new()
-        : __PACKAGE__->new();
+    my $self = ref $_[0]
+        ? shift
+        : UNIVERSAL::isa($_[0] => __PACKAGE__)
+            ? shift->new()
+            : __PACKAGE__->new();
     if (@_) {
         $self->{_attr} = shift;
-        $self->value(@_) if @_;
+        return $self->value(@_) if @_;
         return $self
     }
     return $self->{_attr};
 }
 
 sub type {
-    my $self = UNIVERSAL::isa($_[0] => __PACKAGE__)
-        ? shift->new()
-        : __PACKAGE__->new();
+    my $self = ref $_[0]
+        ? shift
+        : UNIVERSAL::isa($_[0] => __PACKAGE__)
+            ? shift->new()
+            : __PACKAGE__->new();
     if (@_) {
         $self->{_type} = shift;
         $self->value(@_) if @_;
@@ -660,44 +667,58 @@ BEGIN {
 }
 
 sub prefix {
-    my $self = UNIVERSAL::isa($_[0] => __PACKAGE__)
-        ? shift->new()
-        : __PACKAGE__->new();
+    my $self = ref $_[0]
+        ? shift
+        : UNIVERSAL::isa($_[0] => __PACKAGE__)
+            ? shift->new()
+            : __PACKAGE__->new();
     return $self->{_prefix} unless @_;
     $self->{_prefix} = shift;
-    $self->value(@_) if @_;
+    if (scalar @_) {
+        return $self->value(@_);
+    }
     return $self;
 }
 
 sub uri {
-    my $self = UNIVERSAL::isa($_[0] => __PACKAGE__)
-        ? shift->new()
-        : __PACKAGE__->new();
+    my $self = ref $_[0]
+        ? shift
+        : UNIVERSAL::isa($_[0] => __PACKAGE__)
+            ? shift->new()
+            : __PACKAGE__->new();
     return $self->{_uri} unless @_;
     my $uri = $self->{_uri} = shift;
     warn "Usage of '::' in URI ($uri) deprecated. Use '/' instead\n"
         if defined $uri && $^W && $uri =~ /::/;
-    $self->value(@_) if @_;
+    if (scalar @_) {
+         return $self->value(@_);
+    }
     return $self;
 }
 
 sub set_value {
-    my $self = UNIVERSAL::isa($_[0] => __PACKAGE__)
-        ? shift->new()
-        : __PACKAGE__->new();
+    my $self = ref $_[0]
+        ? shift
+        : UNIVERSAL::isa($_[0] => __PACKAGE__)
+            ? shift->new()
+            : __PACKAGE__->new();
     $self->{_value} = [@_];
     return $self;
 }
 
 sub value {
-    my $self = UNIVERSAL::isa($_[0] => __PACKAGE__)
-        ? shift->new()
-        : __PACKAGE__->new;
-    (@_)
-        ? ($self->set_value(@_), return $self)
-        : wantarray
-            ? return @{$self->{_value}}
-            : return $self->{_value}->[0];
+    my $self = ref $_[0] ? shift
+        : UNIVERSAL::isa($_[0] => __PACKAGE__)
+            ? shift->new()
+            : __PACKAGE__->new;
+    if (@_) {
+        return $self->set_value(@_);
+    }
+    else {
+        return wantarray
+            ? @{$self->{_value}}
+            : $self->{_value}->[0];
+    }
 }
 
 sub signature {
@@ -738,13 +759,14 @@ BEGIN {
 sub BEGIN {
     no strict 'refs';
 
-    __PACKAGE__->__mk_accessors(qw(readable level seen autotype typelookup attr maptype
+    __PACKAGE__->__mk_accessors(qw(readable level seen autotype attr maptype
         namespaces multirefinplace encoding signature on_nonserialized context
         ns_uri ns_prefix use_default_ns));
 
     for my $method (qw(method fault freeform)) { # aliases for envelope
         *$method = sub { shift->envelope($method => @_) }
     }
+
     # Is this necessary? Seems like work for nothing when a user could just use
     # SOAP::Utils directly.
     # for my $method (qw(qualify overqualify disqualify)) { # import from SOAP::Utils
@@ -768,7 +790,19 @@ sub new {
         _use_default_ns => 1,
         _multirefinplace => 0,
         _seen => {},
-        _typelookup => {
+        _encoding => 'UTF-8',
+        _objectstack => {},
+        _signature => [],
+        _maptype => {},
+        _on_nonserialized => sub {Carp::carp "Cannot marshall @{[ref shift]} reference" if $^W; return},
+        _encodingStyle => $SOAP::Constants::NS_ENC,
+        _attr => {
+            "{$SOAP::Constants::NS_ENV}encodingStyle" => $SOAP::Constants::NS_ENC,
+        },
+        _namespaces => {},
+        _soapversion => SOAP::Lite->soapversion,
+    } => $class;
+    $self->typelookup({
            'base64Binary' =>
               [10, sub {$_[0] =~ /[^\x09\x0a\x0d\x20-\x7f]/ }, 'as_base64Binary'],
            'zerostring' =>
@@ -817,19 +851,7 @@ sub new {
                [95, sub { $_[0] =~ /^(urn:|http:\/\/)/i; }, 'as_anyURI'],
             'string' =>
                [100, sub {1}, 'as_string'],
-        },
-        _encoding => 'UTF-8',
-        _objectstack => {},
-        _signature => [],
-        _maptype => {},
-        _on_nonserialized => sub {Carp::carp "Cannot marshall @{[ref shift]} reference" if $^W; return},
-        _encodingStyle => $SOAP::Constants::NS_ENC,
-        _attr => {
-            "{$SOAP::Constants::NS_ENV}encodingStyle" => $SOAP::Constants::NS_ENC,
-        },
-        _namespaces => {},
-        _soapversion => SOAP::Lite->soapversion,
-    } => $class;
+        });
     $self->register_ns($SOAP::Constants::NS_ENC,$SOAP::Constants::PREFIX_ENC);
     $self->register_ns($SOAP::Constants::NS_ENV,$SOAP::Constants::PREFIX_ENV)
         if $SOAP::Constants::PREFIX_ENV;
@@ -841,6 +863,16 @@ sub new {
     while (@_) { my $method = shift; $self->$method(shift) if $self->can($method) }
 
     return $self;
+}
+
+sub typelookup {
+    my ($self, $lookup) = @_;
+    if (defined $lookup) {
+        $self->{ _typelookup } = $lookup;
+        $self->{ _typelookup_order } = [ sort { $lookup->{$a}->[0] <=> $lookup->{$b}->[0] } keys %{ $lookup } ];
+        return $self;
+    }
+    return $self->{ _typelookup };
 }
 
 sub ns {
@@ -961,10 +993,9 @@ sub xmlschema {
     }
 
     # do nothing if current schema is the same as new
-    return $self if $self->{_xmlschema} && $self->{_xmlschema} eq $schema[0];
+    # return $self if $self->{_xmlschema} && $self->{_xmlschema} eq $schema[0];
 
     my $ns = $self->namespaces;
-
     # delete current schema from namespaces
     if (my $schema = $self->{_xmlschema}) {
         delete $ns->{$schema};
@@ -1006,11 +1037,21 @@ sub gen_id { sprintf "%U", $_[1] }
 sub multiref_object {
     my ($self, $object) = @_;
     my $id = $self->gen_id($object);
-    my $seen = $self->seen;
-    $seen->{$id}->{count}++;
-    $seen->{$id}->{multiref} ||= $seen->{$id}->{count} > 1;
-    $seen->{$id}->{value} = $object;
-    $seen->{$id}->{recursive} ||= 0;
+    if (! exists $self->{ _seen }->{ $id }) {
+        $self->{ _seen }->{ $id } = {
+            count => 1,
+            multiref => 0,
+            value => $object,
+            recursive => 0
+        };
+    }
+    else {
+        my $id_seen = $self->{ _seen }->{ $id };
+        $id_seen->{count}++;
+        $id_seen->{multiref} = 1;
+        $id_seen->{value} = $object;
+        $id_seen->{recursive} ||= 0;
+    }
     return $id;
 }
 
@@ -1030,15 +1071,21 @@ sub is_href {
 }
 
 sub multiref_anchor {
-    my $seen = shift->seen->{my $id = shift || return undef};
-    return $seen->{multiref} ? "ref-$id" : undef;
+    my ($self, $id) = @_;
+    no warnings qw(uninitialized);
+    if ($self->{ _seen }->{ $id }->{multiref}) {
+        return "ref-$id"
+    }
+    else {
+        return undef;
+    }
 }
 
 sub encode_multirefs {
     my $self = shift;
     return if $self->multirefinplace();
 
-    my $seen = $self->seen();
+    my $seen = $self->{ _seen };
     map { $_->[1]->{_id} = 1; $_ }
         map { $self->encode_object($seen->{$_}->{value}) }
             grep { $seen->{$_}->{multiref} && !$seen->{$_}->{recursive} }
@@ -1075,8 +1122,14 @@ sub encode_object {
 
     use vars '%objectstack';           # we'll play with symbol table
     local %objectstack = %objectstack; # want to see objects ONLY in the current tree
+
     # did we see this object in current tree? Seems to be recursive refs
-    $self->recursive_object($object) if ++$objectstack{$id} > 1;
+    # same as call to $self->recursive_object($object) - but
+    # recursive_object($object) has to re-compute the object's id
+    if (++$objectstack{ $id } > 1) {
+        $self->{ _seen }->{ $id }->{recursive} = 1
+    }
+
     # return if we already saw it twice. It should be already properly serialized
     return if $objectstack{$id} > 2;
 
@@ -1158,10 +1211,11 @@ sub encode_scalar {
     return [$name, {'xsi:type' => $self->maptypetouri($type), %$attr}, [$self->encode_object($$value)], $self->gen_id($value)] if ref $value;
 
     # autodefined type
-    if ($self->autotype) {
-        my $lookup = $self->typelookup();
+    if ($self->{ _autotype}) {
+        my $lookup = $self->{_typelookup};
         no strict qw(refs);
-        for (sort {$lookup->{$a}->[0] <=> $lookup->{$b}->[0]} keys %$lookup) {
+        #for (sort {$lookup->{$a}->[0] <=> $lookup->{$b}->[0]} keys %$lookup) {
+        for (@{ $self->{ _typelookup_order } }) {
             my $method = $lookup->{$_}->[2];
             return $self->can($method) && $self->$method($value, $name, $type, $attr)
                 || $method->($value, $name, $type, $attr)
@@ -1174,7 +1228,7 @@ sub encode_scalar {
 }
 
 sub encode_array {
-    my($self, $array, $name, $type, $attr) = @_;
+    my ($self, $array, $name, $type, $attr) = @_;
     my $items = 'item';
 
     # If typing is disabled, just serialize each of the array items
@@ -1210,11 +1264,11 @@ sub encode_literal_array {
 
     if ($self->autotype) {
         my $items = 'item';
-    
+
         # TODO: add support for multidimensional, partially transmitted and sparse arrays
         my @items = map {$self->encode_object($_, $items)} @$array;
 
-    
+
         my $num = @items;
         my($arraytype, %types) = '-';
         for (@items) {
@@ -1224,10 +1278,10 @@ sub encode_literal_array {
         $arraytype = sprintf "%s\[$num]", keys %types > 1 || $arraytype eq '-'
             ? SOAP::Utils::qualify(xsd => $self->xmlschemaclass->anyTypeValue)
             : $arraytype;
-    
+
         $type = SOAP::Utils::qualify($self->encprefix => 'Array')
             if !defined $type;
-    
+
         return [$name || SOAP::Utils::qualify($self->encprefix => 'Array'),
             {
                 SOAP::Utils::qualify($self->encprefix => 'arrayType') => $arraytype,
@@ -1241,32 +1295,32 @@ sub encode_literal_array {
         #
         # literal arrays are different - { array => [ 5,6 ] }
         # results in <array>5</array><array>6</array>
-        # This means that if there's a literal inside the array (not a 
-        # reference), we have to encode it this way. If there's only 
-        # nested tags, encode as 
+        # This means that if there's a literal inside the array (not a
+        # reference), we have to encode it this way. If there's only
+        # nested tags, encode as
         # <array><foo>1</foo><foo>2</foo></array>
         #
-        
+
         my $literal = undef;
         my @items = map {
-            ref $_ 
+            ref $_
                 ? $self->encode_object($_)
                 : do {
                     $literal++;
                     $_
                 }
-            
+
         } @$array;
 
         if ($literal) {
             return map { [ $name , $attr , $_, $self->gen_id($array) ] } @items;
         }
-        else {         
+        else {
             return [$name || SOAP::Utils::qualify($self->encprefix => 'Array'),
                 $attr,
                 [ @items ],
                 $self->gen_id($array)
-            ];            
+            ];
         }
     }
 }
@@ -1352,16 +1406,15 @@ sub find_prefix {
 }
 
 sub fixattrs {
-    my $self = shift;
-    my $data = shift;
-    my($name, $attr) = ($data->SOAP::Data::name, {%{$data->SOAP::Data::attr}});
-    my($xmlns, $prefix) = ($data->uri, $data->prefix);
+    my ($self, $data) = @_;
+    my ($name, $attr) = ($data->SOAP::Data::name, {%{$data->SOAP::Data::attr}});
+    my ($xmlns, $prefix) = ($data->uri, $data->prefix);
     unless (defined($xmlns) || defined($prefix)) {
         $self->register_ns($xmlns,$prefix) unless ($self->use_default_ns);
         return ($name, $attr);
     }
-    $name ||= gen_name; # local name
-    $prefix = gen_ns if !defined $prefix && $xmlns gt '';
+    $name ||= gen_name(); # local name
+    $prefix = gen_ns() if !defined $prefix && $xmlns gt '';
     $prefix = ''
         if defined $xmlns && $xmlns eq ''
             || defined $prefix && $prefix eq '';
@@ -1400,28 +1453,33 @@ sub attrstoqname {
 
 sub tag {
     my ($self, $tag, $attrs, @values) = @_;
+
+    my $readable = $self->{ _readable };
+
     my $value = join '', @values;
-    my $level = $self->level;
-    my $indent = $self->readable ? ' ' x (($level-1)*2) : '';
+    my $indent = $readable ? ' ' x (($self->{ _level }-1)*2) : '';
 
     # check for special attribute
     return "$indent$value" if exists $attrs->{_xml} && delete $attrs->{_xml};
 
     die "Element '$tag' can't be allowed in valid XML message. Died."
-        if $tag !~ /^(?![xX][mM][lL])$SOAP::Constants::NSMASK$/o;
+        if $tag !~ /^$SOAP::Constants::NSMASK$/o;
 
-    my $prolog = $self->readable ? "\n" : "";
-    my $epilog = $self->readable ? "\n" : "";
+	warn "Element '$tag' uses the reserved prefix 'XML' (in any case)"
+		if $tag !~ /^(?![Xx][Mm][Ll])/;
+
+    my $prolog = $readable ? "\n" : "";
+    my $epilog = $readable ? "\n" : "";
     my $tagjoiner = " ";
-    if ($level == 1) {
+    if ($self->{ _level } == 1) {
         my $namespaces = $self->namespaces;
         foreach (keys %$namespaces) {
             $attrs->{SOAP::Utils::qualify(xmlns => $namespaces->{$_})} = $_
         }
         $prolog = qq!<?xml version="1.0" encoding="@{[$self->encoding]}"?>!
             if defined $self->encoding;
-        $prolog .= "\n" if $self->readable;
-        $tagjoiner = " \n".(' ' x (($level+1) * 2)) if $self->readable;
+        $prolog .= "\n" if $readable;
+        $tagjoiner = " \n".(' ' x 4 ) if $readable;
     }
     my $tagattrs = join($tagjoiner, '',
         map { sprintf '%s="%s"', $_, SOAP::Utils::encode_attribute($attrs->{$_}) }
@@ -1438,22 +1496,32 @@ sub tag {
 
 sub xmlize {
     my $self = shift;
-    my($name, $attrs, $values, $id) = @{+shift};
+    my($name, $attrs, $values, $id) = @{$_[0]};
     $attrs ||= {};
 
     local $self->{_level} = $self->{_level} + 1;
+
     return $self->tag($name, $attrs)
         unless defined $values;
+
     return $self->tag($name, $attrs, $values)
-        unless UNIVERSAL::isa($values => 'ARRAY');
+        unless ref $values eq "ARRAY";
+
     return $self->tag($name, {%$attrs, href => '#'.$self->multiref_anchor($id)})
         if $self->is_href($id, delete($attrs->{_id}));
-    return $self->tag($name,
-        {
-            %$attrs, id => $self->multiref_anchor($id)
-        },
-        map {$self->xmlize($_)} @$values
-    );
+
+    # we have seen this element as a reference
+    if (defined $id && $self->{ _seen }->{ $id }->{ multiref}) {
+        return $self->tag($name,
+            {
+                %$attrs, id => $self->multiref_anchor($id)
+            },
+            map {$self->xmlize($_)} @$values
+        );
+    }
+    else {
+        return $self->tag($name, $attrs, map {$self->xmlize($_)} @$values);
+    }
 }
 
 sub uriformethod {
@@ -1606,7 +1674,8 @@ sub envelope {
         die "Wrong type of envelope ($type) for SOAP call\n";
     }
 
-    $self->seen({}); # reinitialize multiref table
+    $self->{ _seen } = {}; # reinitialize multiref table
+
     # Build the envelope
     # Right now it is possible for $body to be a SOAP::Data element that has not
     # XML escaped any values. How do you remedy this?
@@ -1882,30 +1951,29 @@ sub _as_data {
         -> set_value(o_value($pointer));
 }
 
-sub DIS_as_data {
-    my $self = shift;
-    my $node = shift;
-
-    my $data = SOAP::Data->new( prefix => '',
-        # name => o_qname has side effect: sets namespace !
-        name => o_qname($node),
-        name => o_lname($node),
-        attr => o_lattr($node) );
-
-    if ( defined o_child($node) ) {
-        my @children;
-        foreach my $child ( @{ o_child($node) } ) {
-            push( @children, $self->_as_data($child) );
-        }
-        $data->set_value( \SOAP::Data->value(@children) );
-    }
-    else {
-        $data->set_value( o_value($node) );
-    }
-
-    return $data;
-}
-
+#sub _as_data {
+#    my $self = shift;
+#    my $node = shift;
+#
+#    my $data = SOAP::Data->new( prefix => '',
+#        # name => o_qname has side effect: sets namespace !
+#        name => o_qname($node),
+#        name => o_lname($node),
+#        attr => o_lattr($node) );
+#
+#    if ( defined o_child($node) ) {
+#        my @children;
+#        foreach my $child ( @{ o_child($node) } ) {
+#            push( @children, $self->_as_data($child) );
+#        }
+#        $data->set_value( \SOAP::Data->value(@children) );
+#    }
+#    else {
+#        $data->set_value( o_value($node) );
+#    }
+#
+#    return $data;
+#}
 
 sub match {
     my $self = shift;
@@ -1919,10 +1987,9 @@ sub match {
 }
 
 sub _traverse {
-    my $self = shift;
-    my ($pointer, $itself, $path, @path) = @_;
+    my ($self, $pointer, $itself, $path, @path) = @_;
 
-    die "Incorrect parameter" unless $itself =~ /^\d*$/;
+    die "Incorrect parameter" unless $itself =~/^\d$/;
 
     if ($path && substr($path, 0, 1) eq '{') {
         $path = join '/', $path, shift @path while @path && $path !~ /}/;
@@ -1932,7 +1999,12 @@ sub _traverse {
 
     return $pointer unless defined $path;
 
-    $op = '==' unless $op; $op .= '=' if $op eq '=' || $op eq '!';
+    if (! $op) {
+        $op = '==';
+    }
+    elsif ($op eq '=' || $op eq '!') {
+        $op .= '=';
+    }
     my $numok = defined $num && eval "$itself $op $num";
     my $nameok = (o_lname($pointer) || '') =~ /(?:^|\})$path$/ if defined $path; # name can be with namespace
 
@@ -1954,8 +2026,7 @@ sub _traverse {
 }
 
 sub _traverse_tree {
-    my $self = shift;
-    my($pointer, @path) = @_;
+    my ($self, $pointer, @path) = @_;
 
     # can be list of children or value itself. Traverse only children
     return unless ref $pointer eq 'ARRAY';
@@ -1976,6 +2047,7 @@ package SOAP::Deserializer;
 
 use vars qw(@ISA);
 use SOAP::Lite::Utils;
+use Class::Inspector;
 
 @ISA = qw(SOAP::Cloneable);
 
@@ -1985,6 +2057,9 @@ sub BEGIN {
     __PACKAGE__->__mk_accessors( qw(ids hrefs parts parser
         base xmlschemas xmlschema context) );
 }
+
+# Cache (slow) Class::Inspector results
+my %_class_loaded=();
 
 sub new {
     my $self = shift;
@@ -2108,23 +2183,25 @@ use constant _NAME => 5;
 sub decode_object {
     my $self = shift;
     my $ref = shift;
-    my($name, $attrs, $children, $value) = @$ref;
+    my($name, $attrs_ref, $children, $value) = @$ref;
 
-    $ref->[ _ATTRS ] = $attrs = {%$attrs}; # make a copy for long attributes
+    my %attrs = %{ $attrs_ref };
+
+    $ref->[ _ATTRS ] = \%attrs;        # make a copy for long attributes
 
     use vars qw(%uris);
     local %uris = (%uris, map {
-        do { (my $ns = $_) =~ s/^xmlns:?//; $ns } => delete $attrs->{$_}
-    } grep {/^xmlns(:|$)/} keys %$attrs);
+        do { (my $ns = $_) =~ s/^xmlns:?//; $ns } => delete $attrs{$_}
+    } grep {/^xmlns(:|$)/} keys %attrs);
 
-    foreach (keys %$attrs) {
+    foreach (keys %attrs) {
         next unless m/^($SOAP::Constants::NSMASK?):($SOAP::Constants::NSMASK)$/;
 
     $1 =~ /^[xX][mM][lL]/ ||
         $uris{$1} &&
             do {
-                $attrs->{SOAP::Utils::longname($uris{$1}, $2)} = do {
-                    my $value = $attrs->{$_};
+                $attrs{SOAP::Utils::longname($uris{$1}, $2)} = do {
+                    my $value = $attrs{$_};
                     $2 ne 'type' && $2 ne 'arrayType'
                         ? $value
                         : SOAP::Utils::longname($value =~ m/^($SOAP::Constants::NSMASK?):(${SOAP::Constants::NSMASK}(?:\[[\d,]*\])*)/
@@ -2149,14 +2226,13 @@ sub decode_object {
     ($children, $value) = (undef, $children) unless ref $children;
 
     return $name => ($ref->[4] = $self->decode_value(
-        [$ref->[ _NAME ], $attrs, $children, $value]
+        [$ref->[ _NAME ], \%attrs, $children, $value]
     ));
 }
 
 sub decode_value {
     my $self = shift;
-    my $ref = shift;
-    my($name, $attrs, $children, $value) = @$ref;
+    my($name, $attrs, $children, $value) = @{ $_[0] };
 
     # check SOAP version if applicable
     use vars '$level'; local $level = $level || 0;
@@ -2165,27 +2241,25 @@ sub decode_value {
         SOAP::Lite->soapversion($namespace) if $envelope eq 'Envelope' && $namespace;
     }
 
-    # check encodingStyle
-    # future versions may bind deserializer to encodingStyle
-    my $encodingStyle = $attrs->{"{$SOAP::Constants::NS_ENV}encodingStyle"} || "";
-    my (%union,%isect);
-    # TODO - SOAP 1.2 and 1.1 have different rules about valid encodingStyle values
-    #        For example, in 1.1 - any http://schemas.xmlsoap.org/soap/encoding/*
-    #        value is valid
-    # Find intersection of declared and supported encoding styles
-    foreach my $e (@SOAP::Constants::SUPPORTED_ENCODING_STYLES, split(/ +/,$encodingStyle)) {
-        $union{$e}++ && $isect{$e}++;
+    if (exists $attrs->{"{$SOAP::Constants::NS_ENV}encodingStyle"}) {
+        # check encodingStyle
+        # future versions may bind deserializer to encodingStyle
+        my $encodingStyle = $attrs->{"{$SOAP::Constants::NS_ENV}encodingStyle"};
+        # TODO - SOAP 1.2 and 1.1 have different rules about valid encodingStyle values
+        #        For example, in 1.1 - any http://schemas.xmlsoap.org/soap/encoding/*
+        #        value is valid
+        if (defined $encodingStyle && length($encodingStyle)) {
+            my %styles = map { $_ => undef } @SOAP::Constants::SUPPORTED_ENCODING_STYLES;
+            my $found = 0;
+            foreach my $e (split(/ +/,$encodingStyle)) {
+                if (exists $styles{$e}) {
+                    $found ++;
+            }
+        }
+        die "Unrecognized/unsupported value of encodingStyle attribute '$encodingStyle'"
+            if (! $found) && !(SOAP::Lite->soapversion == 1.1 && $encodingStyle =~ /(?:^|\b)$SOAP::Constants::NS_ENC/);
     }
-    die "Unrecognized/unsupported value of encodingStyle attribute '$encodingStyle'"
-        if defined($encodingStyle) && length($encodingStyle) > 0 && !%isect &&
-            !(SOAP::Lite->soapversion == 1.1 && $encodingStyle =~ /(?:^|\b)$SOAP::Constants::NS_ENC/);
-
-    # removed to provide literal support in 0.65
-    #$encodingStyle !~ /(?:^|\b)$SOAP::Constants::NS_ENC/;
-    #                 # ^^^^^^^^ \b causing problems (!?) on some systems
-    #                 # as reported by David Dyck <dcd@tc.fluke.com>
-    #                 # so use (?:^|\b) instead
-
+    }
     use vars '$arraytype'; # type of Array element specified on Array itself
     # either specified with xsi:type, or <enc:name/> or array element
     my ($type) = grep { defined }
@@ -2195,20 +2269,21 @@ sub decode_value {
 
     # $name is not used here since type should be encoded as type, not as name
     my ($schema, $class) = SOAP::Utils::splitlongname($type) if $type;
-    my $schemaclass = defined($schema) && $self->xmlschemas->{$schema}
+    my $schemaclass = defined($schema) && $self->{ _xmlschemas }->{$schema}
         || $self;
 
-    {
+    if (! exists $_class_loaded{$schemaclass}) {
         no strict qw(refs);
-        if (! defined(%{"${schemaclass}::"}) ) {
+        if (! Class::Inspector->loaded($schemaclass) ) {
             eval "require $schemaclass" or die $@ if not ref $schemaclass;
         }
+        $_class_loaded{$schemaclass} = undef;
     }
 
     # store schema that is used in parsed message
-    $self->xmlschema($schema) if $schema && $schema =~ /XMLSchema/;
+    $self->{ _xmlschema } = $schema if ($schema) && $schema =~ /XMLSchema/;
 
-    # don't use class/type if anyType/ur-type is specified on wire
+   # don't use class/type if anyType/ur-type is specified on wire
     undef $class
         if $schemaclass->can('anyTypeValue')
             && $schemaclass->anyTypeValue eq $class;
@@ -2245,9 +2320,9 @@ sub decode_value {
 
     return undef if grep {
         /^$SOAP::Constants::NS_XSI_NILS$/ && do {
-            my $class = $self->xmlschemas->{ $1 || $2 };
-            eval "require $class" or die @$;;
-            $class->as_undef($attrs->{$_})
+             my $class = $self->xmlschemas->{ $1 || $2 };
+             eval "require $class" or die @$;;
+             $class->as_undef($attrs->{$_})
         }
     } keys %$attrs;
 
@@ -2670,7 +2745,7 @@ sub find_target {
     # try to bind directly
     if (defined($class = $self->dispatch_with->{$method_uri}
             || $self->dispatch_with->{$action || ''}
-            || ($action =~ /^"(.+)"$/
+            || (defined($action) && $action =~ /^"(.+)"$/
                 ? $self->dispatch_with->{$1}
                 : undef))) {
         # return object, nothing else to do here
@@ -3253,7 +3328,7 @@ EOP
     $self->{'_stub'} .= "# -- generated from $schema_url\n" if $schema_url;
     $self->{'_stub'} .= 'my %methods = ('."\n";
     foreach my $service (keys %$services) {
-        $self->{'_stub'} .= "$service => {\n";
+        $self->{'_stub'} .= "'$service' => {\n";
         foreach (qw(endpoint soapaction namespace)) {
             $self->{'_stub'} .= "    $_ => '".$services->{$service}{$_}."',\n";
         }
@@ -3357,6 +3432,11 @@ sub AUTOLOAD {
 
 1;
 EOP
+
+    # untaint stub code
+    $self->{'_stub'} =~ /^(.*)$/s; $self->{'_stub'} = $1;
+#print STDERR "stub=$self->{_stub}\n";
+
     return $self->stub;
 }
 
@@ -3424,7 +3504,7 @@ use SOAP::Lite::Utils;
 use SOAP::Constants;
 use SOAP::Packager;
 
-use Scalar::Util qw(weaken);
+use Scalar::Util qw(weaken blessed);
 
 @ISA = qw(SOAP::Cloneable);
 
@@ -4331,7 +4411,7 @@ print the following message on success:
 
 There are three common (and one less common) variants of SOAP messages.
 
-These adress the message style (positional parameters vs. specified message
+These address the message style (positional parameters vs. specified message
 documents) and encoding (as-is vs. typed).
 
 The different message styles are:
@@ -5322,7 +5402,9 @@ the string test is normally last and allways returns true):
 
   my @list = qw(-1 45 foo bar 3838);
   my $proxy = SOAP::Lite->uri($uri)->proxy($proxyUrl);
-  $proxy->serializer->typelookup->{string}->[0] = 0;
+  my $lookup = $proxy->serializer->typelookup;
+  $lookup->{string}->[0] = 0;
+  $proxy->serializer->typelookup($lookup);
   $proxy->myMethod(\@list);
 
 See L<SOAP::Serializer|SOAP::Serializer/AUTOTYPING> for more details.
@@ -5525,10 +5607,10 @@ http://www.perl.com/CPAN-local/authors/id/A/AS/ASANDSTRM/XML-Parser-2.27-bin-1-M
 =head2 Transport Modules
 
 SOAP::Lite allows to add support for additional transport protocols, or
-server handlers, via separate modules implementing the SOAP::Transport::* 
+server handlers, via separate modules implementing the SOAP::Transport::*
 interface. The following modules are available from CPAN:
 
-=over 
+=over
 
 =item * SOAP-Transport-HTTP-Nginx
 
@@ -5565,7 +5647,7 @@ of this software.
 
 =head1 HACKING
 
-SOAP::Lite's developement takes place on sourceforge.net.
+SOAP::Lite's development takes place on sourceforge.net.
 
 There's a subversion repository set up at
 

@@ -1,6 +1,6 @@
 # Plugin for Foswiki - The Free and Open Source Wiki, http://foswiki.org/
 # 
-# SoapPlugin is Copyright (C) 2010-2011 Michael Daum http://michaeldaumconsulting.com
+# SoapPlugin is Copyright (C) 2010-2012 Michael Daum http://michaeldaumconsulting.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -16,11 +16,14 @@
 package Foswiki::Plugins::SoapPlugin::Client;
 
 use strict;
+use warnings;
+
 use Foswiki::Func ();    # The plugins API
 use Foswiki::Attrs ();
 use Error qw( :try );
 use SOAP::Lite;# +trace => ['debug']; 
 use Cache::FileCache ();
+#use Data::Dumper ();
 
 use constant DEBUG => 0; # toggle me
 use constant DEFAULT_EXPIRE => 86400; # 24h
@@ -57,12 +60,12 @@ sub new {
 
   bless($this, $class);
 
-  my $cacheDir = Foswiki::Func::getWorkArea("SoapPlugin")."/".$this->{id};
-  mkdir $cacheDir unless -d $cacheDir;
+  $this->{cacheDir} = Foswiki::Func::getWorkArea("SoapPlugin")."/".$this->{id};
+  mkdir $this->{cacheDir} unless -d $this->{cacheDir};
 
-  writeDebug("cacheDir=$cacheDir");
+  writeDebug("cacheDir=$this->{cacheDir}");
   $this->{cache} = Cache::FileCache->new({
-    cache_root => $cacheDir,
+    cache_root => $this->{cacheDir},
     default_expires_in => DEFAULT_EXPIRE,
     }
   );
@@ -74,25 +77,27 @@ sub new {
 sub soap {
   my $this = shift;
 
-
   unless ($this->{soap}) {
     writeDebug("creating soap object");
     if ($this->{wsdl}) {
       $this->{soap} = SOAP::Lite
+        ->cache_dir($this->{cacheDir})
         ->service($this->{wsdl})
-        ->autotype(0)
+        ->autotype(1)
         ->readable(1)
       ;
+      $this->{soap}->proxy($this->{proxy}) if defined $this->{proxy};
+      $this->{soap}->uri($this->{uri}) if defined $this->{uri};
     } else {
       $this->{soap} = SOAP::Lite
+        ->cache_dir($this->{cacheDir})
         ->uri($this->{uri})
         ->proxy($this->{proxy})
-        ->autotype(0)
+        ->autotype(1)
         ->readable(1)
       ;
     }
     $this->{soap}->on_fault(\&onFaultHandler);
-
 
     foreach my $ns ($this->{namespaces}) {
       next unless $ns;
@@ -105,7 +110,8 @@ sub soap {
 
     if ($this->{xmlns}) {
       writeDebug("setting default_ns=$this->{xmlns}");
-      $this->{soap}->default_ns($this->{xmlns})
+      #$this->{soap}->default_ns($this->{xmlns});
+      $this->{soap}->serializer->namespace($this->{xmlns});
     }
 
     writeDebug("done creating soap");
@@ -129,7 +135,8 @@ sub onFaultHandler {
     die($soap->transport->status);
   }
 
-  if (ref $response) {
+  if (ref($response)) {
+    #writeDebug("response=".Data::Dumper->Dump([$response]));
     return $response;
   } else {
     writeDebug("Error: $response");
@@ -145,9 +152,10 @@ sub parseParams {
 
   $result ||= [];
 
-  foreach my $key (keys %$params) {
-    next if $key =~ /^(_.*|format|header|footer|separator|hidenull|method|verbatim|raw|valueof|id|warn)$/;
+  foreach my $key (sort keys %$params) {
+    next if $key =~ /^(_.*|format|header|footer|separator|hidenull|method|verbatim|raw|valueof|id|warn|cache|expire|xslt)$/;
     my $val = $params->{$key};
+    $key =~ s/^param\d+?_//;
     my $attrs = new Foswiki::Attrs($val);
     my $data;
     if (scalar(keys %$attrs)>2) {
@@ -156,8 +164,10 @@ sub parseParams {
     } else {
       $data = SOAP::Data->name($key => $val);
     }
+    
     push @$result, $data;
   }
+  #print STDERR "data=".Data::Dumper->Dump([$result])."\n";
 
   return @$result;
 }
@@ -234,22 +244,27 @@ sub call {
   $method = SOAP::Data->name($method);
 
   if ($this->{xmlns}) {
-    $method->uri($this->{xmlns});
+    #$method->uri($this->{xmlns});
+    $method->attr({xmlns => $this->{xmlns}});
   }
 
   try {
     writeDebug("calling soap");
     $som = $this->soap->call($method, @params);
-    writeDebug("success");
-    $this->_cacheSet($cacheKey, $expire, $som) if $useCache;
+    if ($som->fault) {
+      $error = $som->faultcode.' - '.$som->faultstring.' - '.$som->faultdetail;
+      writeDebug($error);
+    } else {
+      writeDebug("success");
+      $this->_cacheSet($cacheKey, $expire, $som) if $useCache;
+    }
 
   } catch Error::Simple with {
-    writeDebug("error");
     $error = shift;
     $error = $error->{'-text'};
+    writeWarning("Error: $error");
+    writeDebug("Error: $error");
     $error =~ s/ at .*$//s;
-    writeDebug("Error during call: $error");
-    writeWarning("Error during call: $error");
   };
 
   writeDebug("done call()");
@@ -289,8 +304,8 @@ sub _cacheGet {
   $val = _untaint($val);
 
   my $som = SOAP::Deserializer->deserialize($val);
-  $som->context($this->soap);
 
+  $som->context($this->soap);
   $som->{_foswiki_content} = $val; # trick in the orig content
 
   return $som;

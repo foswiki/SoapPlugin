@@ -4,7 +4,7 @@
 # SOAP::Lite is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Id: MAILTO.pm 353 2010-03-17 21:08:34Z kutterma $
+# $Id: MAILTO.pm 414 2012-07-15 09:18:42Z kutterma $
 #
 # ======================================================================
 
@@ -13,9 +13,9 @@ package SOAP::Transport::MAILTO;
 use strict;
 
 
-our $VERSION = 0.711;
+our $VERSION = 0.715;
 
-use MIME::Lite; 
+use MIME::Lite;
 use URI;
 
 # ======================================================================
@@ -27,7 +27,7 @@ use vars qw(@ISA);
 
 sub DESTROY { SOAP::Trace::objects('()') }
 
-sub new { 
+sub new {
     my $class = shift;
     return $class if ref $class;
 
@@ -35,7 +35,7 @@ sub new {
     while (@_) { $class->can($_[0]) ? push(@methods, shift() => shift) : push(@params, shift) }
     my $self = bless {@params} => $class;
     while (@methods) { my($method, $params) = splice(@methods,0,2);
-        $self->$method(ref $params eq 'ARRAY' ? @$params : $params) 
+        $self->$method(ref $params eq 'ARRAY' ? @$params : $params)
     }
     SOAP::Trace::objects('()');
 
@@ -44,7 +44,7 @@ sub new {
 
 sub send_receive {
     my($self, %parameters) = @_;
-    my($envelope, $endpoint, $action) = 
+    my($envelope, $endpoint, $action) =
         @parameters{qw(envelope endpoint action)};
 
     $endpoint ||= $self->endpoint;

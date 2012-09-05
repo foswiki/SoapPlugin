@@ -19,12 +19,13 @@ lib/SOAP/Transport/LOCAL.pm 0644
 lib/SOAP/Transport/LOOPBACK.pm 0644
 lib/SOAP/Transport/MAILTO.pm 0644
 lib/SOAP/Transport/POP3.pm 0644
-lib/SOAP/Transport/TCP.pm 0644
 lib/UDDI/Lite.pm 0644
+lib/XML/Parser/Lite.pm 0644
 lib/XMLRPC/Lite.pm 0644
 lib/XMLRPC/Test.pm 0644
 lib/XMLRPC/Transport/HTTP.pm 0644
 lib/XMLRPC/Transport/POP3.pm 0644
 lib/XMLRPC/Transport/TCP.pm 0644
+pub/System/SoapPlugin/SoapPluginSnap1.png 0644
 soap-lite.patch 0644
 soap-transport-http.patch 0644

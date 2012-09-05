@@ -4,7 +4,7 @@
 # SOAP::Lite is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Id: HTTP.pm 354 2010-03-18 18:29:09Z kutterma $
+# $Id: HTTP.pm 414 2012-07-15 09:18:42Z kutterma $
 #
 # ======================================================================
 
@@ -12,7 +12,7 @@ package SOAP::Transport::HTTP;
 
 use strict;
 
-our $VERSION = 0.711;
+our $VERSION = 0.715;
 
 use SOAP::Lite;
 use SOAP::Packager;
@@ -131,6 +131,8 @@ sub send_receive {
     my ( $context, $envelope, $endpoint, $action, $encoding, $parts ) =
       @parameters{qw(context envelope endpoint action encoding parts)};
 
+    $encoding ||= 'UTF-8';
+
     $endpoint ||= $self->endpoint;
 
     my $method = 'POST';
@@ -170,7 +172,6 @@ sub send_receive {
           && $self->options->{is_compress}
           && ( $self->options->{compress_threshold} || 0 ) < length $envelope;
 
-        $envelope = Compress::Zlib::memGzip($envelope) if $compressed;
 
         my $original_encoding = $http_request->content_encoding;
 
@@ -197,9 +198,19 @@ sub send_receive {
           # from string (doing pack with 'C0A*' modifier) if length and
           # bytelength are not the same
             my $bytelength = SOAP::Utils::bytelength($envelope);
-            $envelope = pack( 'C0A*', $envelope )
-              if !$SOAP::Constants::DO_NOT_USE_LWP_LENGTH_HACK
-                  && length($envelope) != $bytelength;
+            if ($] < 5.008) {
+                $envelope = pack( 'C0A*', $envelope );
+            }
+            else {
+                require Encode;
+                $envelope = Encode::encode($encoding, $envelope);
+            }
+            #  if !$SOAP::Constants::DO_NOT_USE_LWP_LENGTH_HACK
+            #      && length($envelope) != $bytelength;
+
+            # compress after encoding
+            # doing it before breaks the compressed content (#74577)
+            $envelope = Compress::Zlib::memGzip($envelope) if $compressed;
 
             $http_request->content($envelope);
             $http_request->protocol('HTTP/1.1');
@@ -313,7 +324,6 @@ sub send_receive {
     # untaint
     $content =~ /^(.*)$/s;
     $content = $1;
-
     return $content;
 }
 
@@ -534,7 +544,7 @@ sub handle {
 
     my $length = $ENV{'CONTENT_LENGTH'} || 0;
 
-    # if the HTTP_TRANSFER_ENCODING env is defined, set $chunked true
+    # if the HTTP_TRANSFER_ENCODING env is defined, set $chunked if it's chunked*
     # else to false
     my $chunked = (defined $ENV{'HTTP_TRANSFER_ENCODING'}
         && $ENV{'HTTP_TRANSFER_ENCODING'} =~ /^chunked.*$/) || 0;
@@ -567,9 +577,16 @@ sub handle {
         if ( !$chunked ) {
             my $buffer;
             binmode(STDIN);
-            while ( sysread( STDIN, $buffer, $length ) ) {
-                $content .= $buffer;
-                last if ( length($content) >= $length );
+            if ( defined $ENV{'MOD_PERL'} ) {
+                while ( read( STDIN, $buffer, $length ) ) {
+                    $content .= $buffer;
+                    last if ( length($content) >= $length );
+                }
+            } else {
+                while ( sysread( STDIN, $buffer, $length ) ) {
+                    $content .= $buffer;
+                    last if ( length($content) >= $length );
+                }
             }
         }
 
@@ -685,7 +702,13 @@ sub handle {
         while ( my $r = $c->get_request ) {
             $self->request($r);
             $self->SUPER::handle;
-            $c->send_response( $self->response );
+            eval {
+                local $SIG{PIPE} = sub {die "SIGPIPE"};
+                $c->send_response( $self->response );
+            };
+            if ($@ && $@ !~ /^SIGPIPE/) {
+                die $@;
+            }
         }
 
 # replaced ->close, thanks to Sean Meisner <Sean.Meisner@VerizonWireless.com>

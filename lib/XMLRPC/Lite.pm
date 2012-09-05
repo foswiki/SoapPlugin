@@ -4,7 +4,7 @@
 # SOAP::Lite is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Id: Lite.pm 374 2010-05-14 08:12:25Z kutterma $
+# $Id: Lite.pm 414 2012-07-15 09:18:42Z kutterma $
 #
 # ======================================================================
 
@@ -13,7 +13,7 @@ package XMLRPC::Lite;
 use SOAP::Lite;
 use strict;
 
-our $VERSION = 0.712;
+our $VERSION = 0.715;
 
 # ======================================================================
 
@@ -140,7 +140,7 @@ sub encode_hash {
 
     return ['struct', {}, [
         map {
-            ['member', {}, [['name', {}, $_], $self->encode_object($hash->{$_})]]
+            ['member', {}, [['name', {}, SOAP::Utils::encode_data($_)], $self->encode_object($hash->{$_})]]
         } keys %{ $hash }
     ]];
 }
@@ -364,7 +364,7 @@ sub new {
         serializer => XMLRPC::Serializer->new,
         deserializer => XMLRPC::Deserializer->new,
         on_action => sub {return},
-        uri => 'http://unspecified/',
+        default_ns => 'http://unspecified/',
         @_
     );
 }

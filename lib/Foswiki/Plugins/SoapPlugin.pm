@@ -13,10 +13,11 @@
 package Foswiki::Plugins::SoapPlugin;
 
 use strict;
+use warnings;
 use Foswiki::Func ();
 
 our $VERSION = '$Rev$';
-our $RELEASE = '2.00';
+our $RELEASE = '3.00';
 our $SHORTDESCRIPTION = 'SOAP for Foswiki';
 our $NO_PREFS_IN_TOPIC = 1;
 

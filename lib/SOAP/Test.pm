@@ -4,17 +4,16 @@
 # SOAP::Lite is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Id: Test.pm 341 2009-09-30 18:34:58Z kutterma $
+# $Id: Test.pm 414 2012-07-15 09:18:42Z kutterma $
 #
 # ======================================================================
 
 package SOAP::Test;
 
-use 5.004;
-use vars qw($VERSION $TIMEOUT);
-use version; $VERSION = qv('0.710.10');
+use 5.006;
+our $VERSION = 0.715;
 
-$TIMEOUT = 5;
+our $TIMEOUT = 5;
 
 # ======================================================================
 
@@ -76,7 +75,7 @@ sub run_for {
 
   $r = $s->getStateStruct({item1 => 1, item2 => 4})->result;
   ok(ref $r && $r->{item2} eq 'Arkansas');
-
+print $s->transport->status, "\n";
   {
     my $autoresult = $s->autoresult;
     $s->autoresult(1);

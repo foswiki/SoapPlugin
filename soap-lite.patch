@@ -1,6 +1,6 @@
---- Lite.pm	2011-05-03 17:51:45.916977954 +0200
-+++ /tmp/Lite.pm	2011-05-03 17:51:42.596978052 +0200
-@@ -1874,39 +1874,39 @@
+--- /tmp/SOAP-Lite-0.715/blib/lib/SOAP/Lite.pm	2012-07-15 11:35:18.000000000 +0200
++++ lib/SOAP/Lite.pm	2012-09-03 11:26:58.679175416 +0200
+@@ -1942,39 +1942,38 @@
          : @{$self->{_current}} ? (SOAP::Utils::splitlongname(o_lname($self->{_current}->[0])))[0] : undef;
  }
  
@@ -16,8 +16,7 @@
  sub _as_data {
      my $self = shift;
 -    my $node = shift;
-+    my $pointer = shift;
- 
+-
 -    my $data = SOAP::Data->new( prefix => '',
 -        # name => o_qname has side effect: sets namespace !
 -        name => o_qname($node),
@@ -34,7 +33,8 @@
 -    else {
 -        $data->set_value( o_value($node) );
 -    }
--
++    my $pointer = shift;
+ 
 -    return $data;
 +    SOAP::Data
 +        -> new(prefix => '', name => o_qname($pointer), name => o_lname($pointer), attr => o_lattr($pointer))
@@ -46,25 +46,35 @@
 +#    my $node = shift;
 +#
 +#    my $data = SOAP::Data->new( prefix => '',
-+#	# name => o_qname has side effect: sets namespace !
-+#	name => o_qname($node),
-+#	name => o_lname($node),
-+#	attr => o_lattr($node) );
++#        # name => o_qname has side effect: sets namespace !
++#        name => o_qname($node),
++#        name => o_lname($node),
++#        attr => o_lattr($node) );
 +#
 +#    if ( defined o_child($node) ) {
-+#	my @children;
-+#	foreach my $child ( @{ o_child($node) } ) {
-+#	    push( @children, $self->_as_data($child) );
-+#	}
-+#	$data->set_value( \SOAP::Data->value(@children) );
++#        my @children;
++#        foreach my $child ( @{ o_child($node) } ) {
++#            push( @children, $self->_as_data($child) );
++#        }
++#        $data->set_value( \SOAP::Data->value(@children) );
 +#    }
 +#    else {
-+#	$data->set_value( o_value($node) );
++#        $data->set_value( o_value($node) );
 +#    }
 +#
 +#    return $data;
 +#}
-+
  
  sub match {
      my $self = shift;
+@@ -3433,6 +3432,10 @@
+ 
+ 1;
+ EOP
++
++    # untaint stub code
++    $self->{'_stub'} =~ /^(.*)$/s; $self->{'_stub'} = $1;
++
+     return $self->stub;
+ }
+ 

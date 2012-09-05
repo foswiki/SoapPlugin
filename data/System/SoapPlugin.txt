@@ -1,4 +1,4 @@
-%META:TOPICINFO{author="ProjectContributor" date="1269028908" format="1.1" version="1.6"}%
+%META:TOPICINFO{author="ProjectContributor" comment="save topic"date="1346872348"format="1.1" version="8"}%
 ---+!! %TOPIC%
 %SHORTDESCRIPTION%
 
@@ -30,6 +30,7 @@ xpath expressions.
   header="..." %BR% \
   footer="..." %BR% \
   separator="..." | these format strings are used to format non-scalar results |
+| xslt="..." | instead of using foswiki's format methods you could als use a stylesheet to transform the result |
 | hidenull="on/off" | if switched on, the empty response or node won't be displayed, that is even =head= and =footer= content is omitted |
 | raw="on/off" | if switched on, the xml response is returned as is, that is no formatting is applied |
 | verbatim="on/off" | this behaves like =raw="on"= basically but also pretty-prints the output to ease reading the xml and then puts it into a &lt;verbatim> environment to format it as html |
@@ -165,6 +166,227 @@ Every message created by !SoapPlugin adds a set of foswiki-specific headers whic
 | =foswiki:web= %BR% =foswiki.topic= | web and topic from where the SOAP call was issued | 
 | =foswiki:isAdmin= | a boolean flag indicating whether the current user is a wiki admin |
 
+---++ Example using the National Weather Service
+Use this in your !LocalSite.cfg to configure the =nws= endpoint:
+
+<verbatim class="perl">
+$Foswiki::cfg{SoapPlugin}{Clients} = [
+#  {
+#    ... other clients ...
+#  },
+  { 
+    'id' => 'nws', 
+    'wsdl' => 'http://www.weather.gov/forecasts/xml/DWMLgen/wsdl/ndfdXML.wsdl',
+    'proxy' => 'http://graphical.weather.gov/xml/SOAP_server/ndfdXMLserver.php',
+    'xmlns' => 'http://graphical.weather.gov/xml/DWMLgen/wsdl/ndfdXML.wsdl',
+  }
+];
+</verbatim>
+
+Add a weather report to your own page using:
+
+<verbatim class="tml">
+%INCLUDE{"System.SoapPlugin" 
+  section="nws::weather"
+  latitude="40.78"
+  longitude="-73.88"
+  numdays="4"
+}%
+</verbatim>
+
+%IF{"context SoapPluginEnabled"
+  then="$percntINCLUDE{
+      \"%WEB%.%TOPIC%\" 
+      section=\"nws::weather\"
+      latitude=\"40.78\"
+      longitude=\"-73.88\"
+      numdays=\"4\"
+    }$percnt"
+  else="That's how it would look like if you enabled the plugin:
+
+    <img src='%ATTACHURLPATH%/SoapPluginSnap1.png' alt='mockup' title='mockup' />"
+}%
+
+<verbatim class="foswikiHidden">
+%STARTSECTION{"nws::weather"}%
+%SOAP{"nws" 
+  id="weather"
+  cache="on"
+  expire="1 day"
+  method="NDFDgenByDay" 
+  hidenull="off"
+  valueof="//dwmlByDayOut"
+  format="$value"
+  xslt="$percntINCLUDE{\"%WEB%.%TOPIC%\" section=\"xslt\"}$percnt"
+  param1_latitude="40.78" 
+  param2_longitude="-73.88" 
+  param3_startDate="%SERVERTIME{"$year-$mo-$day"}%" 
+  param4_numDays="4" 
+  param5_Unit="m"
+  param6_format="12 hourly"
+}%
+%ENDSECTION{"nws::weather"}%
+%STARTSECTION{"xslt"}%
+<xsl:stylesheet version='1.0' xmlns:xsl='http://www.w3.org/1999/XSL/Transform'>
+<xsl:output method='html' standalone='no' indent='no'/>
+<xsl:template match='/'>
+  <table class='forecastTable'>
+  <xsl:apply-templates select="/dwml/data" /> 
+  </table>
+  <xsl:apply-templates select="/dwml/head" /> 
+<style>
+.forecastTable {
+  border:1px solid #ddd;
+  margin-bottom:1em;
+  width:700px;
+}
+.forecastTable h3 {
+  margin:0 0 0.5em 0;
+}
+.forecastTable td {
+  padding:1em;
+  width:25%;
+  /*border:1px solid #ddd;*/
+  vertical-align:top;
+}
+.forecastTable img {
+  border:1px solid #ddd;
+  margin:0 0.5em 0.5em 0;
+  width:5em;
+}
+</style>
+</xsl:template>
+
+<xsl:template match="head">
+<div class="footer foswikiGrayText foswikiSmallish">
+<a>
+  <xsl:attribute name="target">_blank</xsl:attribute>
+  <xsl:attribute name="href"> 
+     <xsl:value-of select="source/credit" />
+  </xsl:attribute>
+</a>
+<xsl:value-of select="product/title" />,
+<a>
+  <xsl:attribute name="target">_blank</xsl:attribute>
+  <xsl:attribute name="href"> 
+     <xsl:value-of select="source/disclaimer" />
+  </xsl:attribute>
+  disclaimer
+</a>,
+<a>
+  <xsl:attribute name="target">_blank</xsl:attribute>
+  <xsl:attribute name="href"> 
+     <xsl:value-of select="source/feedback" />
+  </xsl:attribute>
+  feedback
+</a>
+</div>
+</xsl:template>
+
+<xsl:template match="time-layout">
+   <xsl:if test="/dwml/data/parameters/*[@time-layout=current()/layout-key]/@type = '12 hour' ">
+      <tr> 
+      <xsl:for-each select="/dwml/data/time-layout[position()=3]/start-valid-time[position()]">
+         <xsl:if test="position()=1">
+            <xsl:if test="@period-name='Tonight'">
+               <td>
+                   
+               </td>
+            </xsl:if>
+         </xsl:if>
+         <xsl:if test="substring(.,12,8)='06:00:00'">
+         <td>
+            <h3><xsl:value-of select="@period-name" /></h3>
+            <xsl:call-template name="conditions-icon">
+               <xsl:with-param name="position" select="position()"/> 
+            </xsl:call-template>
+            <xsl:call-template name="weather">
+               <xsl:with-param name="position" select="position()"/> 
+            </xsl:call-template>
+            <xsl:call-template name="temperature">
+               <xsl:with-param name="position" select="round(position() div 2)"/> 
+            </xsl:call-template>
+            <xsl:call-template name="POP">
+               <xsl:with-param name="position" select="position()"/> 
+            </xsl:call-template>
+         </td>
+         </xsl:if> 
+      </xsl:for-each>
+     </tr>
+
+     <tr>
+        <xsl:for-each select="/dwml/data/time-layout[position()=3]/start-valid-time[position()]"> 
+        <xsl:if test="substring(.,12,8)='18:00:00'">
+           <td>
+              <h3><xsl:value-of select="@period-name" /></h3>
+              <xsl:call-template name="conditions-icon">
+                 <xsl:with-param name="position" select="position()"/> 
+              </xsl:call-template>
+              <xsl:call-template name="weather">
+                 <xsl:with-param name="position" select="position()"/> 
+              </xsl:call-template>
+              <xsl:call-template name="temperature">
+                 <xsl:with-param name="position" select="round(position() div 2)"/> 
+              </xsl:call-template>
+              <xsl:call-template name="POP">
+                 <xsl:with-param name="position" select="position()"/> 
+              </xsl:call-template>
+           </td>
+        </xsl:if> 
+     </xsl:for-each>
+     </tr>
+   </xsl:if>
+</xsl:template>
+
+<xsl:template name="temperature">
+   <xsl:param name="position" /> 
+   <div class='temperature'>
+     <xsl:value-of select="/dwml/data/parameters/temperature[@type='minimum']/value[position()=$position]/."/>
+     -
+     <xsl:value-of select="/dwml/data/parameters/temperature[@type='maximum']/value[position()=$position]/."/> °C
+   </div>
+</xsl:template>
+
+<xsl:template name="POP">
+   <xsl:param name="position" /> 
+   <xsl:if test="/dwml/data/parameters/probability-of-precipitation/value[position()=$position]/. != ''">
+      <div class='pop'>
+      <xsl:value-of select="/dwml/data/parameters/probability-of-precipitation/value[position()=$position]/."/>% 
+       chance of rain
+      </div>
+   </xsl:if>
+</xsl:template>
+
+<xsl:template name="conditions-icon">
+   <xsl:param name="position" /> 
+   <xsl:if test="/dwml/data/parameters/conditions-icon/icon-link[position()=$position]/. !=''">
+      <img>
+         <xsl:attribute name="src">
+         <xsl:if test=".!=''">
+            <xsl:value-of select="/dwml/data/parameters/conditions-icon/icon-link[position()=$position]/."/>
+         </xsl:if>
+         </xsl:attribute>
+         <xsl:attribute name="align">center</xsl:attribute>
+      </img>
+   </xsl:if>
+</xsl:template>
+
+<xsl:template name="weather">
+   <xsl:param name="position" /> 
+   <xsl:if test="/dwml/data/parameters/weather/weather-conditions[position()=$position]/@weather-summary !=''">
+      <div class='weather'>
+        <xsl:value-of select="/dwml/data/parameters/weather/weather-conditions[position()=$position]/@weather-summary"/> 
+      </div>
+   </xsl:if>
+</xsl:template>
+
+<xsl:template match="parameters"><!-- deleted --></xsl:template>
+<xsl:template match="location"><!-- deleted --></xsl:template>
+<xsl:template match="moreWeatherInformation"><!-- deleted --></xsl:template>
+</xsl:stylesheet>
+%ENDSECTION{"xslt"}%
+</verbatim>
+
 ---++ Installation Instructions
 
 %$INSTALL_INSTRUCTIONS%
@@ -185,6 +407,10 @@ Every message created by !SoapPlugin adds a set of foswiki-specific headers whic
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  05 Sep 2012: | upgrading SOAP::Lite shipped with this plugin; \
+                  added XSLT to %SOAP to "ease" formatting xml results; \
+                  added caching of perl stubs generated from wsdl; \
+                  added example using the <a href='http://graphical.weather.gov/xml/'>National Weather Service</a> SOAP interface | 
 |  18 May 2011: | implemented caching; \
                   including a local version of SOAP::Lite with patches applied; \
                   removed XML::Parser::Lite from the SOAP::Lite package as it is seriously broken; \
@@ -199,3 +425,5 @@ Every message created by !SoapPlugin adds a set of foswiki-specific headers whic
 |  Support: | Foswiki:Support/%TOPIC% |
 
 <!-- Do _not_ attempt to edit this topic; it is auto-generated. -->
+
+%META:FILEATTACHMENT{name="SoapPluginSnap1.png" attachment="SoapPluginSnap1.png" attr="" comment="" date="1346872348" size="76833" user="ProjectContributor" version="1"}%
