@@ -70,6 +70,35 @@ Will be translated to a call using
 </STORNO>
 </verbatim>
 
+When the name of an argument to a SOAP method clashes with a parameter of the %SOAP macro, e.g. =format=, =depth= etc, then 
+SOAP arguments can be specified using a =param_...= prefix to distinguish them:
+
+<verbatim class="tml">
+%SOAP{
+  method="..."
+  param_format="..."
+  param_depth="..."
+}%
+</verbatim>
+
+In some rare cases of a rather crude webservice interface (like the one for the National Weather Service, see below), it is 
+required to _order_ arguments passed to the SOAP method as they aren't recognized correctly otherwise. 
+This can be achieved using a =param1_...=, =param2_...= etc prefix:
+
+<verbatim class="tml">
+%SOAP{
+  method="..."
+  param1_latitude="..." 
+  param2_longitude="..." 
+  param3_startDate="..." 
+  param4_numDays="..." 
+  param5_Unit="..."
+  param6_format="..."
+}%
+</verbatim>
+
+That way arguments will be sorted accordingly in the SOAP request structure.
+
 ---+++ SOAPFORMAT
 
 | *Parameter* | *Description* |
@@ -190,7 +219,6 @@ Add a weather report to your own page using:
   section="nws::weather"
   latitude="40.78"
   longitude="-73.88"
-  numdays="4"
 }%
 </verbatim>
 
@@ -200,7 +228,6 @@ Add a weather report to your own page using:
       section=\"nws::weather\"
       latitude=\"40.78\"
       longitude=\"-73.88\"
-      numdays=\"4\"
     }$percnt"
   else="That's how it would look like if you enabled the plugin:
 
@@ -218,8 +245,8 @@ Add a weather report to your own page using:
   valueof="//dwmlByDayOut"
   format="$value"
   xslt="$percntINCLUDE{\"%WEB%.%TOPIC%\" section=\"xslt\"}$percnt"
-  param1_latitude="40.78" 
-  param2_longitude="-73.88" 
+  param1_latitude="%latitude%" 
+  param2_longitude="%longitude%" 
   param3_startDate="%SERVERTIME{"$year-$mo-$day"}%" 
   param4_numDays="4" 
   param5_Unit="m"
