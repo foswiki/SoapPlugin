@@ -1,6 +1,6 @@
 # Plugin for Foswiki - The Free and Open Source Wiki, http://foswiki.org/
 # 
-# SoapPlugin is Copyright (C) 2010-2012 Michael Daum http://michaeldaumconsulting.com
+# SoapPlugin is Copyright (C) 2010-2014 Michael Daum http://michaeldaumconsulting.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -23,12 +23,12 @@ use Foswiki::Attrs ();
 use Error qw( :try );
 use SOAP::Lite;# +trace => ['debug']; 
 use Cache::FileCache ();
-#use Data::Dumper ();
+#use Data::Dump qw(dump);
 
 use constant DEBUG => 0; # toggle me
 use constant DEFAULT_EXPIRE => 86400; # 24h
 
-use vars qw($currentClient);
+our $currentClient;
 
 ###############################################################################
 sub SOAP::Transport::HTTP::Client::get_basic_credentials {
@@ -136,7 +136,7 @@ sub onFaultHandler {
   }
 
   if (ref($response)) {
-    #writeDebug("response=".Data::Dumper->Dump([$response]));
+    #writeDebug("response=".dump([$response]));
     return $response;
   } else {
     writeDebug("Error: $response");
@@ -252,7 +252,20 @@ sub call {
     writeDebug("calling soap");
     $som = $this->soap->call($method, @params);
     if ($som->fault) {
-      $error = $som->faultcode.' - '.$som->faultstring.' - '.$som->faultdetail;
+      my $detail = $som->faultdetail; 
+      my $detailStr = '';
+
+      if (ref($detail)) {
+	foreach my $exception (values %$detail) {
+	  foreach my $key (keys %$exception) {
+	    $detailStr .= " - $exception->{$key} "; 
+	  }
+	}
+      } else {
+	$detailStr = " - $detail";
+      }
+
+      $error = $som->faultcode.' - '.$som->faultstring.$detailStr;
       writeDebug($error);
     } else {
       writeDebug("success");
@@ -317,7 +330,7 @@ sub _cacheSet {
   my $expire = shift;
   my $som = shift;
 
-  $expire = DEFAULT_EXPIRE unless defined $expire;
+  $expire = DEFAULT_EXPIRE if !defined($expire) || $expire eq 'on';
 
   my $cache = $this->{cache};
   return unless defined $cache;

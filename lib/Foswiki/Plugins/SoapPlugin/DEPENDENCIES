@@ -1,5 +1,6 @@
-XML::Parser,>=2.34,CPAN,Required
 Cache::Cache,>=1.05,CPAN,Required
-libxml2,>=2.7.5,c,Required.
+Class::Inspector,>0,CPAN,Required
+libxml2,>=2.7.5,c,Required
 XML::LibXML,>1.89,CPAN,Required
 XML::LibXSLT,>1.75,CPAN,Required
+XML::Parser,>=2.34,CPAN,Required

@@ -1989,7 +1989,7 @@ sub match {
 sub _traverse {
     my ($self, $pointer, $itself, $path, @path) = @_;
 
-    die "Incorrect parameter" unless $itself =~/^\d$/;
+    die "Incorrect parameter" unless $itself =~/^\d+$/;
 
     if ($path && substr($path, 0, 1) eq '{') {
         $path = join '/', $path, shift @path while @path && $path !~ /}/;

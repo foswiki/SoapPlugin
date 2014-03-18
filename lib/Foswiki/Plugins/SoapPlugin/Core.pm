@@ -1,6 +1,6 @@
 # Plugin for Foswiki - The Free and Open Source Wiki, http://foswiki.org/
 #
-# SoapPlugin is Copyright (C) 2010-2012 Michael Daum http://michaeldaumconsulting.com
+# SoapPlugin is Copyright (C) 2010-2014 Michael Daum http://michaeldaumconsulting.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -22,6 +22,7 @@ use Foswiki::Plugins ();
 use Foswiki::Func ();
 use Encode ();;
 use Foswiki::Plugins::SoapPlugin::Client();
+#use Data::Dump qw(dump);
 
 use constant DEBUG => 0; # toggle me
 
@@ -75,10 +76,10 @@ sub handleSOAP {
 
   my ($som, $error) = $client->call($method, $params);
 
-  return inlineError("Error: $error") if $error;
-
   my $theId = $params->{id};
   $this->{knownSoms}{$theId} = $som if $theId;
+
+  return inlineError("Error: $error") if $error;
 
   return '' if defined $theId && 
     !defined($params->{format}) &&
@@ -104,9 +105,9 @@ sub handleSOAPFORMAT {
 
   my $som = $this->{knownSoms}{$theId};
 
-  unless ($som) {
+  unless (defined($som)) {
     return '' unless $params->{warn};
-    return inlineError("Error: unknown som id '$theId'");
+    return inlineError("Error: unknown som id $theId");
   }
 
   return formatResult($som, $params, $theWeb, $theTopic);
