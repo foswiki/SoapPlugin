@@ -25,7 +25,7 @@ use SOAP::Lite;# +trace => ['debug'];
 use Cache::FileCache ();
 #use Data::Dump qw(dump);
 
-use constant DEBUG => 0; # toggle me
+use constant TRACE => 0; # toggle me
 use constant DEFAULT_EXPIRE => 86400; # 24h
 
 our $currentClient;
@@ -41,7 +41,7 @@ sub SOAP::Transport::HTTP::Client::get_basic_credentials {
 
 ###############################################################################
 sub writeDebug {
-  print STDERR "SoapPlugin::Client - $_[0]\n" if DEBUG;
+  print STDERR "SoapPlugin::Client - $_[0]\n" if TRACE;
 }
 
 ###############################################################################
@@ -162,7 +162,7 @@ sub parseParams {
       my @val = $this->parseParams($attrs);
       $data = SOAP::Data->name($key => \SOAP::Data->value(@val));
     } else {
-      $data = SOAP::Data->name($key => $val);
+      $data = SOAP::Data->name($key => $val)->type("string");
     }
     
     push @$result, $data;
@@ -291,7 +291,7 @@ sub clearCache {
   my $cache = $this->{cache};
   return unless defined $cache;
 
-  writeCmisDebug("clearing cache");
+  writeDebug("clearing cache");
   return $cache->clear(@_);
 }
 sub purgeCache {

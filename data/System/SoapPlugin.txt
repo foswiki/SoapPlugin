@@ -434,6 +434,7 @@ Add a weather report to your own page using:
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  28 May 2014: | disable automatic type detection in SOAP::Lite: all values are strings |
 |  18 Mar 2014: | patching bug in SOAP::Lite; \
                   better error handling; \
                   fixed use of expire parameter; \

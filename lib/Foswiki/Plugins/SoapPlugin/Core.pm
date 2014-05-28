@@ -24,7 +24,7 @@ use Encode ();;
 use Foswiki::Plugins::SoapPlugin::Client();
 #use Data::Dump qw(dump);
 
-use constant DEBUG => 0; # toggle me
+use constant TRACE => 0; # toggle me
 
 ##############################################################################
 sub new {
@@ -117,7 +117,7 @@ sub handleSOAPFORMAT {
 ###############################################################################
 # static
 sub writeDebug {
-  print STDERR "SoapPlugin::Core - $_[0]\n" if DEBUG;
+  print STDERR "SoapPlugin::Core - $_[0]\n" if TRACE;
 }
 
 ##############################################################################
