@@ -1,0 +1,8 @@
+*.swp
+SoapPlugin.md5
+SoapPlugin.sha1
+SoapPlugin.tgz
+SoapPlugin.txt
+SoapPlugin.zip
+SoapPlugin_installer
+SoapPlugin_installer.pl

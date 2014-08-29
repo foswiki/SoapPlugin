@@ -2778,7 +2778,6 @@ sub find_target {
 # The task is to test whether the class in question has already been loaded.
 #
 # SOAP::Lite 0.60:
-#  unless (defined %{"${class}::"}) {
 # Patch to SOAP::Lite 0.60:
 # The following patch does not work for packages defined within a BEGIN block
 #  unless (exists($INC{join '/', split /::/, $class.'.pm'})) {

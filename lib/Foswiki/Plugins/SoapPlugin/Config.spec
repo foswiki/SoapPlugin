@@ -1,7 +1,7 @@
 # ---+ Extensions
 # ---++ SoapPlugin
 
-# **PERL_H**
+# **PERL HIDDEN**
 # List of predefined services
 $Foswiki::cfg{SoapPlugin}{Clients} = [
           {
